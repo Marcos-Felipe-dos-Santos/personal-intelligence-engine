@@ -1,5 +1,9 @@
 # PIE — Personal Intelligence Engine
 
+![CI](https://github.com/Marcos-Felipe-dos-Santos/personal-intelligence-engine/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 A **local-first** engine for capturing, structuring, and projecting personal knowledge.
 
 PIE captures unstructured text entries, extracts structured data, validates it, persists everything in a local SQLite database, and generates human-readable Markdown notes and reports.
