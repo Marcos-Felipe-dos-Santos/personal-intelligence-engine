@@ -29,8 +29,8 @@ PIE can store sensitive personal data in local SQLite databases, generated Markd
 
 ```bash
 # Clone the repository
-git clone <repo-url>
-cd pie
+git clone https://github.com/Marcos-Felipe-dos-Santos/personal-intelligence-engine.git
+cd personal-intelligence-engine
 
 # Create virtual environment
 python -m venv .venv
@@ -186,4 +186,4 @@ Documentação em português disponível em [README.pt-BR.md](README.pt-BR.md).
 
 ## License
 
-Recommended license: MIT. Add a `LICENSE` file before publishing publicly.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

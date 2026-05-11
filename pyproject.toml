@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "PIE Contributors"}
+    {name = "Marcos Felipe dos Santos"}
 ]
 keywords = ["personal", "intelligence", "local-first", "knowledge-management"]
 classifiers = [
