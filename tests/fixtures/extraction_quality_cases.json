@@ -1,0 +1,137 @@
+[
+  {
+    "id": "quality_log_cli_session",
+    "input_text": "Registro sintetico: hoje executei os testes do PIE, revisei o relatorio diario e confirmei que a CLI continuou respondendo.",
+    "expected": {
+      "entry_type": "log",
+      "project": "PIE",
+      "summary_keywords": ["testes", "relatorio diario", "CLI"],
+      "expected_tags": ["log", "pie", "tests", "cli"],
+      "confidence_range": {
+        "min": 0.72,
+        "max": 0.95
+      },
+      "notes": "Synthetic work log with explicit PIE context and observable actions."
+    }
+  },
+  {
+    "id": "quality_idea_weekly_digest",
+    "input_text": "Ideia sintetica: criar um resumo semanal local que agrupe decisoes, problemas e tarefas candidatas sem enviar dados para servicos externos.",
+    "expected": {
+      "entry_type": "idea",
+      "project": null,
+      "summary_keywords": ["resumo semanal", "decisoes", "problemas", "tarefas candidatas"],
+      "expected_tags": ["idea", "weekly-report", "local-first"],
+      "confidence_range": {
+        "min": 0.70,
+        "max": 0.92
+      },
+      "notes": "Clear idea, but no explicit project name is present."
+    }
+  },
+  {
+    "id": "quality_insight_source_traceability",
+    "input_text": "Insight sintetico: percebi que cada memoria projetada precisa citar tanto a entrada estruturada quanto a entrada bruta para ser auditavel.",
+    "expected": {
+      "entry_type": "insight",
+      "project": null,
+      "summary_keywords": ["memoria projetada", "entrada estruturada", "entrada bruta", "auditavel"],
+      "expected_tags": ["insight", "traceability", "audit"],
+      "confidence_range": {
+        "min": 0.72,
+        "max": 0.95
+      },
+      "notes": "Synthetic insight about traceability without a named project."
+    }
+  },
+  {
+    "id": "quality_candidate_task_privacy_docs",
+    "input_text": "Tarefa candidata sintetica: revisar a documentacao de privacidade e conferir se notes, reports, logs e bancos locais continuam ignorados pelo Git.",
+    "expected": {
+      "entry_type": "candidate_task",
+      "project": null,
+      "summary_keywords": ["revisar documentacao", "privacidade", "notes", "reports", "Git"],
+      "expected_tags": ["task", "privacy", "gitignore", "docs"],
+      "confidence_range": {
+        "min": 0.75,
+        "max": 0.95
+      },
+      "notes": "Actionable synthetic task with clear expected checks."
+    }
+  },
+  {
+    "id": "quality_reference_sqlite_docs",
+    "input_text": "Referencia sintetica: guardar o link da documentacao oficial do SQLite como apoio para revisar constraints e foreign keys nas migrations.",
+    "expected": {
+      "entry_type": "reference",
+      "project": null,
+      "summary_keywords": ["documentacao oficial", "SQLite", "constraints", "foreign keys"],
+      "expected_tags": ["reference", "sqlite", "migrations"],
+      "confidence_range": {
+        "min": 0.70,
+        "max": 0.90
+      },
+      "notes": "Reference-like text; no actual URL is included to keep the fixture minimal and synthetic."
+    }
+  },
+  {
+    "id": "quality_decision_keep_fake_default",
+    "input_text": "Decisao sintetica do PIE: manter o FakeExtractor como padrao e ativar o backend Ollama apenas quando a configuracao pedir explicitamente.",
+    "expected": {
+      "entry_type": "decision",
+      "project": "PIE",
+      "summary_keywords": ["FakeExtractor", "padrao", "Ollama", "configuracao"],
+      "expected_tags": ["decision", "pie", "fake-extractor", "ollama"],
+      "confidence_range": {
+        "min": 0.80,
+        "max": 0.98
+      },
+      "notes": "Explicit synthetic decision with a named project."
+    }
+  },
+  {
+    "id": "quality_problem_local_database_lock",
+    "input_text": "Problema sintetico: durante um teste local, o banco SQLite ficou bloqueado depois de uma execucao interrompida e o relatorio nao foi salvo.",
+    "expected": {
+      "entry_type": "problem",
+      "project": null,
+      "summary_keywords": ["banco SQLite", "bloqueado", "execucao interrompida", "relatorio"],
+      "expected_tags": ["problem", "sqlite", "report"],
+      "confidence_range": {
+        "min": 0.75,
+        "max": 0.95
+      },
+      "notes": "Synthetic problem report with a clear failure mode."
+    }
+  },
+  {
+    "id": "quality_review_markdown_output",
+    "input_text": "Review sintetico: o Markdown gerado ficou legivel, mas a secao de fontes precisa destacar melhor os IDs para auditoria manual.",
+    "expected": {
+      "entry_type": "review",
+      "project": null,
+      "summary_keywords": ["Markdown", "legivel", "secao de fontes", "IDs"],
+      "expected_tags": ["review", "markdown", "audit"],
+      "confidence_range": {
+        "min": 0.70,
+        "max": 0.92
+      },
+      "notes": "Synthetic review containing both positive assessment and improvement note."
+    }
+  },
+  {
+    "id": "quality_general_note_ambiguous_context",
+    "input_text": "Nota sintetica avulsa: lembrar de olhar essa ideia com calma quando houver mais contexto disponivel.",
+    "expected": {
+      "entry_type": "general_note",
+      "project": null,
+      "summary_keywords": ["lembrar", "ideia", "mais contexto"],
+      "expected_tags": ["general_note", "ambiguous"],
+      "confidence_range": {
+        "min": 0.40,
+        "max": 0.70
+      },
+      "notes": "Intentionally ambiguous synthetic note; low to moderate confidence is acceptable."
+    }
+  }
+]
