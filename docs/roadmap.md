@@ -21,9 +21,10 @@
 - [x] Implement extractor interface/protocol for swappable adapters
 - [x] Add prompt versioning and audit tracking
 - [x] Phase 2B: Add health check, retry/backoff, and troubleshooting docs
-- [ ] Compare FakeExtractor vs LLM results
-- [ ] Add confidence calibration
+- [ ] Phase 2C: Lightweight extraction quality evaluation ([planned issues](phase_2c_issues.md))
+- [ ] Compare FakeExtractor vs LLM results using synthetic fixtures
 - [ ] Add model-quality regression suite
+- [ ] Document confidence calibration limits
 
 ## Phase 3: Enhanced Input Sources
 
