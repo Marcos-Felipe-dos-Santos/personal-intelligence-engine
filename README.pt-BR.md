@@ -10,11 +10,11 @@ O PIE captura entradas de texto desestruturadas, extrai dados estruturados, vali
 
 ## Status
 
-O PIE e um software alpha experimental. Nesta fase, ele e voltado para desenvolvimento local e exemplos sinteticos, nao para uso como produto de privacidade finalizado.
+O PIE é um software alpha experimental. Nesta fase, ele é voltado para desenvolvimento local e exemplos sintéticos, não para uso como produto de privacidade finalizado.
 
 ## Privacidade Primeiro
 
-O PIE pode armazenar dados pessoais sensiveis em bancos SQLite locais, notas Markdown, relatorios e audit logs. Nao publique `pie.db`, `notes/`, `reports/`, `.env`, logs ou dados locais gerados no Git. Os exemplos do repositorio sao sinteticos.
+O PIE pode armazenar dados pessoais sensíveis em bancos SQLite locais, notas Markdown, relatórios e audit logs. Não publique `pie.db`, `notes/`, `reports/`, `.env`, logs ou dados locais gerados no Git. Os exemplos do repositório são sintéticos.
 
 ## ✨ Funcionalidades
 
@@ -74,7 +74,7 @@ Saída:
 pie report daily --date 2026-05-09
 ```
 
-`--date` e interpretado como um dia local de calendario. Os timestamps continuam armazenados em UTC, e o timezone local padrao e `America/Sao_Paulo`. Configure `PIE_LOCAL_TIMEZONE` com outro timezone IANA se necessario.
+`--date` é interpretado como um dia local de calendário. Os timestamps continuam armazenados em UTC, e o timezone local padrão é `America/Sao_Paulo`. Configure `PIE_LOCAL_TIMEZONE` com outro timezone IANA se necessário.
 
 Saída:
 ```
@@ -85,17 +85,17 @@ Saída:
    File:         reports/daily_2026-05-09.md
 ```
 
-### Extracao local com LLM opcional
+### Extração local com LLM opcional
 
-O PIE usa o `FakeExtractor` deterministico por padrao. Ele nao exige Ollama, APIs de nuvem, nem qualquer servico externo.
+O PIE usa o `FakeExtractor` determinístico por padrão. Ele não exige Ollama, APIs de nuvem, nem qualquer serviço externo.
 
-Para manter o comportamento padrao:
+Para manter o comportamento padrão:
 
 ```bash
 PIE_EXTRACTOR_BACKEND=fake
 ```
 
-O suporte experimental a Ollama esta disponivel como adapter local opcional:
+O suporte experimental a Ollama está disponível como adapter local opcional:
 
 ```bash
 PIE_EXTRACTOR_BACKEND=ollama
@@ -109,10 +109,10 @@ PIE_LLM_RETRY_BACKOFF_SECONDS=1
 Depois execute:
 
 ```bash
-pie add "Eu decidi testar a extracao local com Ollama"
+pie add "Eu decidi testar a extração local com Ollama"
 ```
 
-Se o Ollama nao estiver rodando ou o modelo nao estiver configurado, o PIE mostra um erro claro e nao faz fallback silencioso para o `FakeExtractor`.
+Se o Ollama não estiver rodando ou o modelo não estiver configurado, o PIE mostra um erro claro e não faz fallback silencioso para o `FakeExtractor`.
 
 Verifique o extractor configurado sem criar entrada:
 
@@ -120,7 +120,7 @@ Verifique o extractor configurado sem criar entrada:
 pie doctor
 ```
 
-Veja [docs/troubleshooting.md](docs/troubleshooting.md) para health check do Ollama, configuracao de retry e mensagens de erro comuns.
+Veja [docs/troubleshooting.md](docs/troubleshooting.md) para health check do Ollama, configuração de retry e mensagens de erro comuns.
 
 ### Executar Testes
 
@@ -171,7 +171,7 @@ personal_intelligence_engine/
 
 ## 🔒 Privacidade
 
-Os dados de runtime ficam na sua maquina por desenho, mas arquivos locais ficam em texto claro se o sistema operacional nao os proteger. Leia [docs/privacy.md](docs/privacy.md) antes de usar dados pessoais reais.
+Os dados de runtime ficam na sua máquina por desenho, mas arquivos locais ficam em texto claro se o sistema operacional não os proteger. Leia [docs/privacy.md](docs/privacy.md) antes de usar dados pessoais reais.
 
 ## 📋 Roadmap
 
@@ -184,7 +184,7 @@ Veja [docs/roadmap.md](docs/roadmap.md) para o plano completo de desenvolvimento
 - [Privacidade](docs/privacy.md)
 - [Roadmap](docs/roadmap.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Checklist de Publicacao Git](docs/git_publication_checklist.md)
+- [Checklist de Publicação Git](docs/git_publication_checklist.md)
 
 ## 🌍 English
 
