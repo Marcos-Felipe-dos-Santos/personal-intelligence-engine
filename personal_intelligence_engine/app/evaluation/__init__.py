@@ -1,5 +1,9 @@
 """Lightweight evaluation helpers for extraction quality."""
 
+from personal_intelligence_engine.app.evaluation.report import (
+    render_extraction_evaluation_report,
+    write_extraction_evaluation_report,
+)
 from personal_intelligence_engine.app.evaluation.runner import (
     ExtractionEvaluationResult,
     ExtractionEvaluationRun,
@@ -16,5 +20,7 @@ __all__ = [
     "evaluate_cases",
     "evaluate_extractor",
     "load_extraction_quality_cases",
+    "render_extraction_evaluation_report",
     "score_extraction",
+    "write_extraction_evaluation_report",
 ]
