@@ -112,7 +112,8 @@ class ReportService:
             validation_val = entry.validation_status.value if hasattr(entry.validation_status, "value") else str(entry.validation_status)
             lines.append(f"### [{entry_type_val}] {entry.summary}")
             lines.append("")
-            lines.append(f"- **ID:** `{entry.id}`")
+            lines.append(f"- **Structured Entry ID:** `{entry.id}`")
+            lines.append(f"- **Raw Entry ID:** `{entry.raw_entry_id}`")
             lines.append(f"- **Confidence:** {entry.confidence:.0%}")
             lines.append(f"- **Status:** {validation_val}")
             if entry.project:
@@ -123,7 +124,8 @@ class ReportService:
         lines.append("## Source Entry IDs")
         lines.append("")
         for entry in entries:
-            lines.append(f"- `{entry.id}`")
+            lines.append(f"- Structured Entry ID: `{entry.id}`")
+            lines.append(f"  Raw Entry ID: `{entry.raw_entry_id}`")
         lines.append("")
 
         return "\n".join(lines)

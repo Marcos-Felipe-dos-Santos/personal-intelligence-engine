@@ -34,17 +34,20 @@ class TestDailyReport:
         result = app.generate_daily_report(date_str)
         assert result["entry_count"] >= 2
 
-    def test_report_cites_source_ids(self, app):
-        """The report file cites the source entry IDs."""
+    def test_report_cites_structured_and_raw_source_ids(self, app):
+        """The report file cites structured and raw source entry IDs."""
         r1 = app.add_entry("Preciso fazer o deploy")
         date_str = _get_entry_date(app, r1["entry_id"])
 
         result = app.generate_daily_report(date_str)
         report_content = Path(result["file_path"]).read_text(encoding="utf-8")
 
-        # Report should contain the structured entry ID
         structured = app.entries_repo.get_structured_entry_by_raw_id(r1["entry_id"])
+        assert "Structured Entry ID" in report_content
+        assert "Raw Entry ID" in report_content
         assert structured.id in report_content
+        assert structured.raw_entry_id in report_content
+        assert r1["entry_id"] in report_content
 
     def test_report_has_summary_table(self, app):
         """The report contains a summary table by type."""
