@@ -74,6 +74,8 @@ Saída:
 pie report daily --date 2026-05-09
 ```
 
+`--date` e interpretado como um dia local de calendario. Os timestamps continuam armazenados em UTC, e o timezone local padrao e `America/Sao_Paulo`. Configure `PIE_LOCAL_TIMEZONE` com outro timezone IANA se necessario.
+
 Saída:
 ```
 📊 Daily report generated!

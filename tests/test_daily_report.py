@@ -1,8 +1,13 @@
 """Tests for daily report generation."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+
+from personal_intelligence_engine.app.config import Config
+from personal_intelligence_engine.app.domain.schemas import RawEntry, StructuredEntry
+from personal_intelligence_engine.app.domain.types import EntryType, ValidationStatus
 
 
 def _get_entry_date(app, entry_id: str) -> str:
@@ -13,8 +18,54 @@ def _get_entry_date(app, entry_id: str) -> str:
     return ""
 
 
+def _insert_structured_entry_at(app, *, raw_id: str, structured_id: str, created_at: str, summary: str) -> None:
+    raw = RawEntry(
+        id=raw_id,
+        content=f"Synthetic raw content for {raw_id}",
+        source="test",
+        created_at=created_at,
+        updated_at=created_at,
+        content_hash="a" * 64,
+    )
+    app.entries_repo.insert_raw_entry(raw)
+    app.entries_repo.insert_structured_entry(
+        StructuredEntry(
+            id=structured_id,
+            raw_entry_id=raw_id,
+            entry_type=EntryType.LOG,
+            summary=summary,
+            confidence=0.8,
+            structured_json="{}",
+            validation_status=ValidationStatus.VALID,
+            created_at=created_at,
+            updated_at=created_at,
+        )
+    )
+
+
 class TestDailyReport:
     """Tests for daily report generation."""
+
+    def test_default_timezone_is_sao_paulo(self, monkeypatch):
+        """The default local report timezone is America/Sao_Paulo."""
+        monkeypatch.delenv("PIE_LOCAL_TIMEZONE", raising=False)
+
+        config = Config()
+
+        assert config.local_timezone == "America/Sao_Paulo"
+
+    def test_custom_timezone_env_is_accepted(self, monkeypatch):
+        """A custom IANA timezone can be configured through PIE_LOCAL_TIMEZONE."""
+        monkeypatch.setenv("PIE_LOCAL_TIMEZONE", "UTC")
+
+        config = Config()
+
+        assert config.local_timezone == "UTC"
+
+    def test_invalid_timezone_is_rejected(self):
+        """Invalid timezones fail with a controlled error."""
+        with pytest.raises(ValueError, match="Invalid local timezone"):
+            Config(local_timezone="Invalid/Timezone")
 
     def test_report_is_generated(self, app):
         """A daily report file is created."""
@@ -33,6 +84,38 @@ class TestDailyReport:
 
         result = app.generate_daily_report(date_str)
         assert result["entry_count"] >= 2
+
+    def test_report_date_uses_local_timezone_boundary(self, app):
+        """A UTC timestamp near midnight is included in the correct local day."""
+        _insert_structured_entry_at(
+            app,
+            raw_id="raw-local-previous-day",
+            structured_id="structured-local-previous-day",
+            created_at=datetime(2026, 5, 10, 2, 30, tzinfo=timezone.utc).isoformat(),
+            summary="Synthetic entry that is still May 9 in Sao Paulo.",
+        )
+        _insert_structured_entry_at(
+            app,
+            raw_id="raw-local-current-day",
+            structured_id="structured-local-current-day",
+            created_at=datetime(2026, 5, 10, 12, 0, tzinfo=timezone.utc).isoformat(),
+            summary="Synthetic entry that is May 10 in Sao Paulo.",
+        )
+
+        previous_day_report = app.generate_daily_report("2026-05-09")
+        previous_content = Path(previous_day_report["file_path"]).read_text(encoding="utf-8")
+        current_day_report = app.generate_daily_report("2026-05-10")
+        current_content = Path(current_day_report["file_path"]).read_text(encoding="utf-8")
+
+        assert previous_day_report["entry_count"] == 1
+        assert "structured-local-previous-day" in previous_content
+        assert "raw-local-previous-day" in previous_content
+        assert "structured-local-current-day" not in previous_content
+
+        assert current_day_report["entry_count"] == 1
+        assert "structured-local-current-day" in current_content
+        assert "raw-local-current-day" in current_content
+        assert "structured-local-previous-day" not in current_content
 
     def test_report_cites_structured_and_raw_source_ids(self, app):
         """The report file cites structured and raw source entry IDs."""

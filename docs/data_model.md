@@ -108,3 +108,11 @@ Tracks applied database migrations.
 
 - `confidence >= 0.70`: Entry is marked as `valid`.
 - `confidence < 0.70`: Entry is marked as `needs_review`, and an audit event is created.
+
+## Timezone Rules
+
+- Stored timestamps remain UTC ISO 8601 values.
+- `pie report daily --date YYYY-MM-DD` interprets `YYYY-MM-DD` as a local calendar day.
+- The default local timezone is `America/Sao_Paulo`.
+- Override it with `PIE_LOCAL_TIMEZONE` using an IANA timezone name, for example `UTC` or `America/New_York`.
+- Daily reports convert the local day boundary to UTC before selecting structured entries.

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from personal_intelligence_engine.app.domain.schemas import Report, StructuredEntry
 from personal_intelligence_engine.app.repositories.entries_repository import EntriesRepository
@@ -19,10 +20,12 @@ class ReportService:
         entries_repo: EntriesRepository,
         reports_repo: ReportsRepository,
         reports_dir: Path,
+        local_timezone: str = "America/Sao_Paulo",
     ) -> None:
         self._entries_repo = entries_repo
         self._reports_repo = reports_repo
         self._reports_dir = reports_dir
+        self._local_timezone = ZoneInfo(local_timezone)
 
     def generate_daily_report(self, date_str: str) -> Report:
         """Generate a daily report for the given date.
@@ -36,8 +39,8 @@ class ReportService:
         date_str = self._validate_date(date_str)
         self._reports_dir.mkdir(parents=True, exist_ok=True)
 
-        # Fetch entries for the day
-        entries = self._entries_repo.get_structured_entries_by_date(date_str)
+        # Fetch entries for the local day, while timestamps remain stored in UTC.
+        entries = self._get_structured_entries_by_local_date(date_str)
         entry_ids = [e.id for e in entries]
 
         # Build report content
@@ -74,6 +77,34 @@ class ReportService:
             raise ValueError("Invalid date. Use YYYY-MM-DD.")
 
         return date_str
+
+    def _get_structured_entries_by_local_date(self, date_str: str) -> list[StructuredEntry]:
+        """Fetch structured entries whose UTC timestamps fall within a local day."""
+        local_date = date.fromisoformat(date_str)
+        local_start = datetime.combine(local_date, time.min, tzinfo=self._local_timezone)
+        local_end = datetime.combine(local_date, time.max, tzinfo=self._local_timezone)
+        utc_start = local_start.astimezone(timezone.utc)
+        utc_end = local_end.astimezone(timezone.utc)
+
+        candidates: list[StructuredEntry] = []
+        current_date = utc_start.date()
+        while current_date <= utc_end.date():
+            candidates.extend(self._entries_repo.get_structured_entries_by_date(current_date.isoformat()))
+            current_date += timedelta(days=1)
+
+        return [
+            entry
+            for entry in candidates
+            if utc_start <= self._parse_utc_timestamp(entry.created_at) <= utc_end
+        ]
+
+    @staticmethod
+    def _parse_utc_timestamp(value: str) -> datetime:
+        """Parse an ISO timestamp and normalize it to UTC."""
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
 
     def _render_daily_report(self, date_str: str, entries: list[StructuredEntry]) -> str:
         """Render a daily report as Markdown."""

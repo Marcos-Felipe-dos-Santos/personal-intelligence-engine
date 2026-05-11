@@ -61,6 +61,7 @@ class PIEApp:
             self.entries_repo,
             self.reports_repo,
             self.config.reports_dir,
+            self.config.local_timezone,
         )
 
     def _build_extractor(self) -> Extractor:

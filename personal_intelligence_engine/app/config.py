@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -30,6 +31,7 @@ class Config:
         llm_timeout_seconds: int | float | str | None = None,
         llm_max_retries: int | str | None = None,
         llm_retry_backoff_seconds: int | float | str | None = None,
+        local_timezone: str | None = None,
     ) -> None:
         self.database_path = Path(
             database_path or os.getenv("PIE_DATABASE_PATH", "pie.db")
@@ -67,6 +69,9 @@ class Config:
                 else os.getenv("PIE_LLM_RETRY_BACKOFF_SECONDS", "1")
             ),
             "PIE_LLM_RETRY_BACKOFF_SECONDS",
+        )
+        self.local_timezone = self._validate_timezone(
+            local_timezone or os.getenv("PIE_LOCAL_TIMEZONE", "America/Sao_Paulo")
         )
 
     def ensure_dirs(self) -> None:
@@ -106,3 +111,13 @@ class Config:
         if parsed < 0:
             raise ValueError(f"{name} must be a non-negative number.")
         return parsed
+
+    @staticmethod
+    def _validate_timezone(value: str) -> str:
+        """Validate an IANA timezone name."""
+        timezone_name = value.strip()
+        try:
+            ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"Invalid local timezone '{timezone_name}'. Set PIE_LOCAL_TIMEZONE to a valid IANA timezone.") from exc
+        return timezone_name
