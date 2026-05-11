@@ -2,6 +2,11 @@
 
 Phase 2C is a planning and evaluation phase. Its purpose is to measure extraction quality with synthetic data before making extractor or prompt changes.
 
+Implementation status:
+
+- Synthetic fixtures, expected outputs, deterministic scoring, local runner, Markdown report rendering, and the `pie evaluate extraction` CLI are implemented.
+- Future work should stay lightweight and avoid RAG, embeddings, dashboards, and heavy model benchmarks.
+
 Non-goals for this phase:
 
 - No RAG.

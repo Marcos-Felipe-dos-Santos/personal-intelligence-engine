@@ -5,11 +5,23 @@ Entry point: `pie` (configured in pyproject.toml)
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 from pydantic import ValidationError
 
+from personal_intelligence_engine.app.adapters.fake_extractor import FakeExtractor
+from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractor
 from personal_intelligence_engine.app.config import Config
+from personal_intelligence_engine.app.evaluation.report import (
+    render_extraction_evaluation_report,
+    write_extraction_evaluation_report,
+)
+from personal_intelligence_engine.app.evaluation.runner import evaluate_extractor
 from personal_intelligence_engine.app.main import PIEApp, check_extractor_backend
+
+ROOT = Path(__file__).resolve().parents[3]
+EXTRACTION_QUALITY_FIXTURES = ROOT / "tests" / "fixtures" / "extraction_quality_cases.json"
 
 
 def _format_validation_error(exc: ValidationError) -> str:
@@ -93,6 +105,63 @@ def doctor() -> None:
 
     if not result["ok"]:
         raise click.exceptions.Exit(1)
+
+
+@cli.group()
+def evaluate() -> None:
+    """Run local synthetic evaluations."""
+
+
+@evaluate.command(name="extraction")
+@click.option(
+    "--backend",
+    default="fake",
+    show_default=True,
+    type=click.Choice(["fake", "ollama"], case_sensitive=False),
+    help="Extractor backend to evaluate.",
+)
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Optional Markdown output path.",
+)
+def evaluate_extraction(backend: str, output: Path | None) -> None:
+    """Run extraction quality evaluation and render Markdown."""
+    try:
+        extractor = _build_evaluation_extractor(backend)
+        run = evaluate_extractor(
+            extractor,
+            EXTRACTION_QUALITY_FIXTURES,
+            backend=backend.strip().lower(),
+        )
+
+        if output is not None:
+            saved_path = write_extraction_evaluation_report(run, output)
+            click.echo(f"[OK] Extraction evaluation report saved: {saved_path}")
+            return
+
+        click.echo(render_extraction_evaluation_report(run))
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+
+
+def _build_evaluation_extractor(backend: str):
+    """Build an extractor for synthetic evaluation without opening the database."""
+    normalized_backend = backend.strip().lower()
+    if normalized_backend == "fake":
+        return FakeExtractor()
+
+    if normalized_backend == "ollama":
+        config = Config(extractor_backend="ollama")
+        return LocalLLMExtractor(
+            base_url=config.ollama_base_url,
+            model=config.ollama_model,
+            timeout_seconds=config.llm_timeout_seconds,
+            max_retries=config.llm_max_retries,
+            retry_backoff_seconds=config.llm_retry_backoff_seconds,
+        )
+
+    raise ValueError(f"Invalid evaluation backend '{backend}'. Use 'fake' or 'ollama'.")
 
 
 @cli.group()

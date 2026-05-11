@@ -120,6 +120,13 @@ Verifique o extractor configurado sem criar entrada:
 pie doctor
 ```
 
+Execute a avaliação sintética de qualidade da extração sem criar entradas no banco:
+
+```bash
+pie evaluate extraction --backend fake
+pie evaluate extraction --backend fake --output reports/evaluation/fake.md
+```
+
 Veja [docs/troubleshooting.md](docs/troubleshooting.md) para health check do Ollama, configuração de retry e mensagens de erro comuns.
 
 ### Executar Testes
