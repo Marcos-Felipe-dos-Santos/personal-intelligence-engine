@@ -1,0 +1,62 @@
+[
+  {
+    "name": "sqlite_decision",
+    "input": "Eu decidi usar SQLite como banco local para o PIE.",
+    "expected": {
+      "entry_type": "decision",
+      "project": "PIE",
+      "summary": "Decision to use SQLite as the local database for PIE.",
+      "confidence": 0.85,
+      "tags": ["decision", "sqlite", "pie"],
+      "extra": {}
+    }
+  },
+  {
+    "name": "weekly_report_idea",
+    "input": "Tive uma ideia para criar um relatorio semanal sintetico.",
+    "expected": {
+      "entry_type": "idea",
+      "project": null,
+      "summary": "Idea to create a synthetic weekly report.",
+      "confidence": 0.8,
+      "tags": ["idea", "report"],
+      "extra": {}
+    }
+  },
+  {
+    "name": "local_database_problem",
+    "input": "Encontrei um problema com o banco local durante um teste sintetico.",
+    "expected": {
+      "entry_type": "problem",
+      "project": null,
+      "summary": "Problem with the local database during a synthetic test.",
+      "confidence": 0.78,
+      "tags": ["problem", "database"],
+      "extra": {}
+    }
+  },
+  {
+    "name": "candidate_task",
+    "input": "Preciso revisar a documentacao de troubleshooting do backend local.",
+    "expected": {
+      "entry_type": "candidate_task",
+      "project": null,
+      "summary": "Task to review troubleshooting documentation for the local backend.",
+      "confidence": 0.82,
+      "tags": ["task", "docs"],
+      "extra": {}
+    }
+  },
+  {
+    "name": "general_note",
+    "input": "Nota sintetica sem projeto claro para validar o contrato.",
+    "expected": {
+      "entry_type": "general_note",
+      "project": null,
+      "summary": "Synthetic note without a clear project.",
+      "confidence": 0.62,
+      "tags": ["synthetic"],
+      "extra": {}
+    }
+  }
+]

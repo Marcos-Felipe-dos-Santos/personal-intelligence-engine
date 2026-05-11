@@ -1,0 +1,33 @@
+[
+  {
+    "content": "Eu decidi usar SQLite como banco local para o projeto PIE. É simples, portátil e não precisa de servidor.",
+    "source": "cli",
+    "expected_type": "decision",
+    "expected_confidence_above": 0.70
+  },
+  {
+    "content": "Tive uma ideia para criar um sistema de tags automáticas baseado em frequência de palavras.",
+    "source": "cli",
+    "expected_type": "idea",
+    "expected_confidence_above": 0.70
+  },
+  {
+    "content": "Encontrei um problema na serialização de datas — o timezone não está sendo preservado corretamente.",
+    "source": "cli",
+    "expected_type": "problem",
+    "expected_confidence_above": 0.70
+  },
+  {
+    "content": "Preciso fazer a configuração do CI para rodar os testes automaticamente a cada push.",
+    "source": "cli",
+    "expected_type": "candidate_task",
+    "expected_confidence_above": 0.70
+  },
+  {
+    "content": "Texto genérico sem palavras-chave específicas para classificação automática.",
+    "source": "cli",
+    "expected_type": "general_note",
+    "expected_confidence_below": 0.70,
+    "expected_needs_review": true
+  }
+]

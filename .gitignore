@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+.envrc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SQLite databases (real data)
+*.db
+*.db-*
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite-*
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+*.sqlite3
+*.sqlite3-*
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite3-journal
+*-wal
+*-shm
+*-journal
+
+# Real notes and reports (generated data — not source of truth)
+notes/
+reports/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Temporary and local scratch files
+tmp/
+temp/
+.codex_*/
+*.tmp
+*.temp
+*.bak
+*.orig
