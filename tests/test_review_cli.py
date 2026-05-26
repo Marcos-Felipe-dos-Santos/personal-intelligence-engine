@@ -83,6 +83,12 @@ def _fetch_review_rejected_logs(database_path, raw_entry_id: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def _delete_audit_logs(database_path, raw_entry_id: str) -> None:
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("DELETE FROM audit_logs WHERE raw_entry_id = ?;", (raw_entry_id,))
+        connection.commit()
+
+
 def test_review_list_shows_needs_review_entry(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     structured_id = _add_entry("Nota sintetica sem projeto claro")
@@ -404,3 +410,109 @@ def test_review_approve_still_works_after_reject_command_added(monkeypatch, work
     state = _fetch_review_state(work_dir / "pie.db", structured_id)
     assert state["raw_status"] == "processed"
     assert state["validation_status"] == "valid"
+
+
+def test_review_history_shows_audit_events(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code == 0
+    assert f"Structured Entry ID: {structured_id}" in result.output
+    assert "Raw Entry ID:" in result.output
+    assert "Audit History:" in result.output
+    assert "Action:         entry_created" in result.output
+    assert "Action:         extraction_completed" in result.output
+    assert "Action:         validation_completed" in result.output
+    assert "Action:         low_confidence" in result.output
+    assert "Action:         markdown_generated" in result.output
+    assert "Status:         success" in result.output
+
+
+def test_review_history_events_are_chronological(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code == 0
+    assert result.output.index("Action:         entry_created") < result.output.index(
+        "Action:         extraction_completed"
+    )
+    assert result.output.index("Action:         extraction_completed") < result.output.index(
+        "Action:         validation_completed"
+    )
+    assert result.output.index("Action:         validation_completed") < result.output.index(
+        "Action:         low_confidence"
+    )
+
+
+def test_review_history_includes_review_approved_after_approve(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    approve_result = CliRunner().invoke(cli, ["review", "approve", structured_id])
+    history_result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert approve_result.exit_code == 0
+    assert history_result.exit_code == 0
+    assert "Action:         review_approved" in history_result.output
+    assert "Method:         human_review" in history_result.output
+
+
+def test_review_history_includes_review_rejected_after_reject(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    reject_result = CliRunner().invoke(cli, ["review", "reject", structured_id])
+    history_result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert reject_result.exit_code == 0
+    assert history_result.exit_code == 0
+    assert "Action:         review_rejected" in history_result.output
+    assert "Method:         human_review" in history_result.output
+
+
+def test_review_history_missing_id_returns_friendly_error(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+
+    result = CliRunner().invoke(cli, ["review", "history", "missing-id"])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID 'missing-id'" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_history_without_audit_logs_shows_friendly_message(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    raw_entry_id = _fetch_review_state(work_dir / "pie.db", structured_id)["raw_entry_id"]
+    _delete_audit_logs(work_dir / "pie.db", raw_entry_id)
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code == 0
+    assert "No audit history found for this entry" in result.output
+
+
+def test_review_history_is_read_only(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    before_counts = _fetch_counts(work_dir / "pie.db")
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code == 0
+    assert _fetch_counts(work_dir / "pie.db") == before_counts
+
+
+def test_review_history_does_not_print_raw_content(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    raw_content = "Nota sintetica confidencial somente para teste"
+    structured_id = _add_entry(raw_content)
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code == 0
+    assert raw_content not in result.output

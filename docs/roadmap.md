@@ -35,6 +35,7 @@ See [Core v1 Gap Analysis](core_v1_gap_analysis.md).
 ### Phase 2D: Human-In-The-Loop Review
 
 Design: [Human Review Design](human_review_design.md).
+Edit design: [Review Edit Design](review_edit_design.md).
 
 Planned first implementation:
 
@@ -42,12 +43,12 @@ Planned first implementation:
 - [ ] `pie review show <id>`
 - [ ] `pie review approve <id>`
 - [ ] `pie review reject <id>`
-- [ ] audit actions for `review.approved` and `review.rejected`
+- [ ] audit actions for `review_approved` and `review_rejected`
 - [ ] keep review local-only with no external actions
 
 Deferred:
 
-- [ ] `pie review edit <id>`
+- [ ] `pie review edit <id>` using a revision/snapshot model
 - [ ] batch review actions
 - [ ] assistant-assisted review
 

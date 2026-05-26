@@ -6,9 +6,11 @@ Implementation status:
 
 - `pie review list` is implemented as read-only.
 - `pie review show <id>` is implemented as read-only.
+- `pie review history <id>` is implemented as read-only.
 - `pie review approve <id>` is implemented as the first controlled write action.
 - `pie review reject <id>` is implemented as a controlled write action.
 - `pie review edit <id>` is not implemented.
+- Safe edit design is documented in [Review Edit Design](review_edit_design.md).
 
 ## Objective
 
@@ -93,6 +95,21 @@ The command should display:
 - related IDs
 - audit history summary, if available
 
+### `pie review history <id>`
+
+Shows audit events associated with the raw entry behind a structured entry.
+
+Status: implemented.
+
+Rules:
+
+- history is read-only
+- raw content is not printed
+- events are ordered by creation time
+- approval and rejection events appear when present
+- no files are generated
+- no audit log is created by reading history
+
 ### `pie review approve <id>`
 
 Approves the current structured extraction.
@@ -124,6 +141,8 @@ Rules:
 ### `pie review edit <id>` Future
 
 Editing is intentionally not part of the first implementation unless the data model is explicitly designed first.
+
+Design: [Review Edit Design](review_edit_design.md).
 
 Future edit rules:
 

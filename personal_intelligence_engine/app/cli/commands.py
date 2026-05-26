@@ -231,6 +231,43 @@ def review_show(structured_entry_id: str) -> None:
             app.close()
 
 
+@review.command(name="history")
+@click.argument("structured_entry_id")
+def review_history(structured_entry_id: str) -> None:
+    """Show audit history for one structured entry."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        history = app.get_review_history(structured_entry_id)
+
+        click.echo(f"Structured Entry ID: {history['structured_entry_id']}")
+        click.echo(f"Raw Entry ID:        {history['raw_entry_id']}")
+        events = history["events"]
+        if not events:
+            click.echo("[OK] No audit history found for this entry.")
+            return
+
+        click.echo("Audit History:")
+        for event in events:
+            click.echo("")
+            click.echo(f"Created At:     {event['created_at']}")
+            click.echo(f"Action:         {event['action']}")
+            click.echo(f"Status:         {event['status']}")
+            click.echo(f"Actor:          {event['actor']}")
+            click.echo(f"Method:         {event['method'] or '-'}")
+            if event["model_name"]:
+                click.echo(f"Model:          {event['model_name']}")
+            if event["prompt_version"]:
+                click.echo(f"Prompt Version: {event['prompt_version']}")
+            if event["error_message"]:
+                click.echo(f"Error:          {_shorten(event['error_message'], limit=160)}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @review.command(name="approve")
 @click.argument("structured_entry_id")
 def review_approve(structured_entry_id: str) -> None:

@@ -238,6 +238,31 @@ class PIEApp:
             raise ValueError(f"No review entry found for structured entry ID '{structured_entry_id}'.")
         return self._format_review_entry(row)
 
+    def get_review_history(self, structured_entry_id: str) -> dict:
+        """Get audit history for the raw entry linked to a structured entry."""
+        row = self.entries_repo.get_review_candidate(structured_entry_id)
+        if row is None:
+            raise ValueError(f"No structured entry found for ID '{structured_entry_id}'.")
+
+        logs = self.audit.get_logs_for_entry(row["raw_entry_id"])
+        return {
+            "structured_entry_id": row["structured_entry_id"],
+            "raw_entry_id": row["raw_entry_id"],
+            "events": [
+                {
+                    "created_at": log.created_at,
+                    "action": log.action.value,
+                    "status": log.status.value,
+                    "actor": log.actor,
+                    "method": log.method,
+                    "model_name": log.model_name,
+                    "prompt_version": log.prompt_version,
+                    "error_message": log.error_message,
+                }
+                for log in logs
+            ],
+        }
+
     def approve_review_entry(self, structured_entry_id: str) -> dict:
         """Approve one entry currently waiting for human review."""
         row = self.entries_repo.get_review_candidate(structured_entry_id)

@@ -36,7 +36,9 @@ Minimum first implementation:
 - `pie review show <id>`
 - `pie review approve <id>`
 - `pie review reject <id>`
-- defer `pie review edit <id>` until the data model can preserve edit history clearly
+- defer `pie review edit <id>` until the revision model is implemented
+
+Design decision for future edit: use a dedicated revision/snapshot model before updating structured data. See [Review Edit Design](review_edit_design.md).
 
 ### Entries List And Show
 
