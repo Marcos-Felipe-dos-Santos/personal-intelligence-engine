@@ -7,7 +7,8 @@ Implementation status:
 - `pie review list` is implemented as read-only.
 - `pie review show <id>` is implemented as read-only.
 - `pie review approve <id>` is implemented as the first controlled write action.
-- `pie review reject <id>` and `pie review edit <id>` are not implemented.
+- `pie review reject <id>` is implemented as a controlled write action.
+- `pie review edit <id>` is not implemented.
 
 ## Objective
 
@@ -109,6 +110,8 @@ Rules:
 ### `pie review reject <id>`
 
 Rejects the current structured extraction as not trustworthy.
+
+Status: implemented.
 
 Rules:
 

@@ -255,6 +255,30 @@ def review_approve(structured_entry_id: str) -> None:
             app.close()
 
 
+@review.command(name="reject")
+@click.argument("structured_entry_id")
+def review_reject(structured_entry_id: str) -> None:
+    """Reject one entry marked as needs_review."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.reject_review_entry(structured_entry_id)
+
+        if result["status"] == "already_processed":
+            click.echo(f"[OK] {result['message']}")
+        else:
+            click.echo("[OK] Review entry rejected.")
+            click.echo(f"   Structured Entry ID: {result['structured_entry_id']}")
+            click.echo(f"   Raw Entry ID:        {result['raw_entry_id']}")
+            click.echo("   Status:              processed")
+            click.echo("   Validation:          invalid")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @cli.group()
 def report() -> None:
     """Generate reports from PIE entries."""

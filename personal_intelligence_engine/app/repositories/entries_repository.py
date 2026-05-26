@@ -199,6 +199,24 @@ class EntriesRepository:
         )
         self._db.commit()
 
+    def mark_review_entry_rejected(
+        self,
+        *,
+        structured_entry_id: str,
+        raw_entry_id: str,
+        updated_at: str,
+    ) -> None:
+        """Mark a review entry as processed and invalid."""
+        self._db.execute(
+            "UPDATE raw_entries SET status = ?, updated_at = ? WHERE id = ?;",
+            ("processed", updated_at, raw_entry_id),
+        )
+        self._db.execute(
+            "UPDATE structured_entries SET validation_status = ?, updated_at = ? WHERE id = ?;",
+            ("invalid", updated_at, structured_entry_id),
+        )
+        self._db.commit()
+
     # --- Generated Files ---
 
     def insert_generated_file(self, gf: GeneratedFile) -> None:

@@ -273,6 +273,41 @@ class PIEApp:
             "message": "Entry approved and removed from review queue.",
         }
 
+    def reject_review_entry(self, structured_entry_id: str) -> dict:
+        """Reject one entry currently waiting for human review."""
+        row = self.entries_repo.get_review_candidate(structured_entry_id)
+        if row is None:
+            raise ValueError(f"No structured entry found for ID '{structured_entry_id}'.")
+
+        if row["raw_status"] != "needs_review" and row["validation_status"] != "needs_review":
+            return {
+                "status": "already_processed",
+                "structured_entry_id": row["structured_entry_id"],
+                "raw_entry_id": row["raw_entry_id"],
+                "message": "Entry is not in review; it is already processed, valid, or invalid.",
+            }
+
+        updated_at = datetime.now(timezone.utc).isoformat()
+        self.entries_repo.mark_review_entry_rejected(
+            structured_entry_id=row["structured_entry_id"],
+            raw_entry_id=row["raw_entry_id"],
+            updated_at=updated_at,
+        )
+        self.audit.log(AuditLogCreate(
+            raw_entry_id=row["raw_entry_id"],
+            action=AuditAction.REVIEW_REJECTED,
+            actor="user",
+            method="human_review",
+            status=AuditStatus.SUCCESS,
+        ))
+
+        return {
+            "status": "rejected",
+            "structured_entry_id": row["structured_entry_id"],
+            "raw_entry_id": row["raw_entry_id"],
+            "message": "Entry rejected and removed from review queue.",
+        }
+
     def close(self) -> None:
         """Close database connection."""
         self.db.close()
