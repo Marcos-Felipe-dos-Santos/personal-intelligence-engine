@@ -370,6 +370,7 @@ class PIEApp:
         *,
         entry_type: str | None = None,
         project: str | None = None,
+        validation_status: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
         """Search entries by text across raw content, summary, project, and structured_json."""
@@ -377,6 +378,7 @@ class PIEApp:
             query,
             entry_type=entry_type,
             project=project,
+            validation_status=validation_status,
             limit=limit,
         )
         results = []

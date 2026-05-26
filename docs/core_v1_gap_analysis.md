@@ -51,7 +51,7 @@ Design decision for future edit: use a dedicated revision/snapshot model before 
 
 **Implemented.** Available via `pie search "<query>"`.
 
-- `pie search "<query>"` with `--type`, `--project`, and `--limit` filters
+- `pie search "<query>"` with `--type`, `--project`, `--status`, and `--limit` filters
 - searches across raw content, summary, project, and structured JSON (including tags)
 - shows match source and short snippet per result
 - no external search service required

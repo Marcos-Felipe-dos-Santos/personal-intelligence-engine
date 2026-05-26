@@ -298,6 +298,7 @@ class EntriesRepository:
         *,
         entry_type: str | None = None,
         project: str | None = None,
+        validation_status: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
         """Search entries by text across raw content, summary, project, and structured_json."""
@@ -313,6 +314,9 @@ class EntriesRepository:
         if project is not None:
             clauses.append("s.project = ?")
             params.append(project)
+        if validation_status is not None:
+            clauses.append("s.validation_status = ?")
+            params.append(validation_status)
 
         where = "WHERE " + " AND ".join(clauses)
 

@@ -2,6 +2,7 @@
 
 import os
 import re
+import sqlite3
 
 from click.testing import CliRunner
 
@@ -277,7 +278,28 @@ def test_search_filters_by_project(monkeypatch, work_dir):
 
 
 # -----------------------------------------------------------------------
-# 16. search no results shows friendly message
+# 16. search filters by validation_status
+# -----------------------------------------------------------------------
+
+def test_search_filters_by_validation_status(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    valid_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    review_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result_valid = CliRunner().invoke(cli, ["search", "sintetico", "--status", "valid"])
+    result_review = CliRunner().invoke(cli, ["search", "sintetica", "--status", "needs_review"])
+
+    assert result_valid.exit_code == 0
+    assert valid_id in result_valid.output
+    assert review_id not in result_valid.output
+
+    assert result_review.exit_code == 0
+    assert review_id in result_review.output
+    assert valid_id not in result_review.output
+
+
+# -----------------------------------------------------------------------
+# 17. search no results shows friendly message
 # -----------------------------------------------------------------------
 
 def test_search_no_results_shows_friendly_message(monkeypatch, work_dir):
@@ -291,7 +313,7 @@ def test_search_no_results_shows_friendly_message(monkeypatch, work_dir):
 
 
 # -----------------------------------------------------------------------
-# 17. search does not create extra database files
+# 18. search does not create extra database files
 # -----------------------------------------------------------------------
 
 def test_search_does_not_create_extra_database(monkeypatch, work_dir):
@@ -307,7 +329,29 @@ def test_search_does_not_create_extra_database(monkeypatch, work_dir):
 
 
 # -----------------------------------------------------------------------
-# 18. review commands still work
+# 19. search is read-only
+# -----------------------------------------------------------------------
+
+def test_search_does_not_create_audit_log_or_files(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    notes_before = sorted(os.listdir(work_dir / "notes"))
+    reports_before = sorted(os.listdir(work_dir / "reports"))
+    with sqlite3.connect(work_dir / "pie.db") as connection:
+        audit_count_before = connection.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
+    result = CliRunner().invoke(cli, ["search", "SQLite"])
+
+    assert result.exit_code == 0
+    with sqlite3.connect(work_dir / "pie.db") as connection:
+        audit_count_after = connection.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+    assert audit_count_after == audit_count_before
+    assert sorted(os.listdir(work_dir / "notes")) == notes_before
+    assert sorted(os.listdir(work_dir / "reports")) == reports_before
+
+
+# -----------------------------------------------------------------------
+# 20. review commands still work
 # -----------------------------------------------------------------------
 
 def test_review_commands_still_work(monkeypatch, work_dir):
@@ -326,7 +370,7 @@ def test_review_commands_still_work(monkeypatch, work_dir):
 
 
 # -----------------------------------------------------------------------
-# 19. pie add still works
+# 21. pie add still works
 # -----------------------------------------------------------------------
 
 def test_add_still_works(monkeypatch, work_dir):
@@ -339,7 +383,7 @@ def test_add_still_works(monkeypatch, work_dir):
 
 
 # -----------------------------------------------------------------------
-# 20. pie report daily still works
+# 22. pie report daily still works
 # -----------------------------------------------------------------------
 
 def test_report_daily_still_works(monkeypatch, work_dir):

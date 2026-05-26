@@ -107,6 +107,7 @@ pie entries show <structured_entry_id>
 pie search "SQLite"
 pie search "SQLite" --type decision
 pie search "pipeline" --project PIE
+pie search "review" --status needs_review
 ```
 
 Search looks for text in raw content, summary, project, and structured JSON (including tags). Results show a short snippet and the match source.

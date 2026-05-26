@@ -448,8 +448,15 @@ def entries_show(structured_entry_id: str) -> None:
 @click.argument("query")
 @click.option("--type", "entry_type", default=None, help="Filter by entry type.")
 @click.option("--project", default=None, help="Filter by project.")
+@click.option("--status", "validation_status", default=None, help="Filter by validation status.")
 @click.option("--limit", default=50, show_default=True, type=int, help="Maximum results to show.")
-def search(query: str, entry_type: str | None, project: str | None, limit: int) -> None:
+def search(
+    query: str,
+    entry_type: str | None,
+    project: str | None,
+    validation_status: str | None,
+    limit: int,
+) -> None:
     """Search entries by text.
 
     Searches across raw content, summary, project, and tags.
@@ -466,6 +473,7 @@ def search(query: str, entry_type: str | None, project: str | None, limit: int) 
             query,
             entry_type=entry_type,
             project=project,
+            validation_status=validation_status,
             limit=limit,
         )
         if not results:
@@ -493,4 +501,3 @@ def search(query: str, entry_type: str | None, project: str | None, limit: int) 
 
 if __name__ == "__main__":
     cli()
-
