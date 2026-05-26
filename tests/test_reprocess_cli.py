@@ -47,6 +47,9 @@ def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
         mock_extract
     )
 
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        audit_count_before = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
     # Run dry run
     result = CliRunner().invoke(cli, ["entries", "reprocess", structured_id, "--dry-run"])
     assert result.exit_code == 0, result.output
@@ -62,6 +65,9 @@ def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
 
         revisions = conn.execute("SELECT COUNT(*) FROM structured_entry_revisions;").fetchone()[0]
         assert revisions == 0
+
+        audit_count_after = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+        assert audit_count_after == audit_count_before
 
 
 def test_reprocess_dry_run_displays_comparison(monkeypatch, work_dir):
@@ -179,6 +185,10 @@ def test_reprocess_creates_revision(monkeypatch, work_dir):
 
         assert before["entry_type"] == "decision"
         assert after["entry_type"] == "idea"
+        assert "content" not in before
+        assert "content" not in after
+        assert "raw_content" not in before
+        assert "raw_content" not in after
         assert "entry_type" in changed
         assert "confidence" in changed
         assert "summary" in changed
@@ -196,10 +206,10 @@ def test_reprocess_creates_audit_log(monkeypatch, work_dir):
     CliRunner().invoke(cli, ["entries", "reprocess", structured_id])
 
     with sqlite3.connect(work_dir / "pie.db") as conn:
-        cursor = conn.execute("SELECT action FROM audit_logs;")
-        actions = [row[0] for row in cursor.fetchall()]
-        assert "extraction_completed" in actions
-        assert "validation_completed" in actions
+        cursor = conn.execute("SELECT action, method FROM audit_logs;")
+        logs = cursor.fetchall()
+        assert ("extraction_completed", "reprocess:fake_extractor") in logs
+        assert ("validation_completed", "reprocess") in logs
 
 
 def test_reprocess_missing_id_returns_error(monkeypatch, work_dir):
@@ -270,6 +280,19 @@ def test_reprocess_by_status_respects_limit(monkeypatch, work_dir):
     # Dry run output should print 2 structured entry blocks
     blocks = result.output.count("Structured Entry ID:")
     assert blocks == 2
+
+
+def test_reprocess_by_status_rejects_invalid_limit(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    _add_entry("Nota simples sem palavras chave")
+
+    result = CliRunner().invoke(
+        cli,
+        ["entries", "reprocess", "--status", "needs_review", "--limit", "0", "--dry-run"],
+    )
+
+    assert result.exit_code != 0
+    assert "Invalid value for '--limit'" in result.output
 
 
 def test_reprocess_by_status_empty_message(monkeypatch, work_dir):

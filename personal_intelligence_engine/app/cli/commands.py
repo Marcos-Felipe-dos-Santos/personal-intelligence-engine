@@ -447,7 +447,13 @@ def entries_show(structured_entry_id: str) -> None:
 @entries.command(name="reprocess")
 @click.argument("structured_entry_id", required=False)
 @click.option("--status", default=None, help="Filter entries to reprocess by status/validation status.")
-@click.option("--limit", default=20, show_default=True, type=int, help="Maximum entries to reprocess when status is specified.")
+@click.option(
+    "--limit",
+    default=20,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Maximum entries to reprocess when status is specified.",
+)
 @click.option("--dry-run", is_flag=True, help="Show comparison of changes without applying them.")
 def entries_reprocess(
     structured_entry_id: str | None,

@@ -174,7 +174,7 @@ class ReprocessService:
             raw_entry_id=raw_entry_id,
             action=AuditAction.EXTRACTION_COMPLETED,
             actor="system",
-            method=method_name,
+            method=f"reprocess:{method_name}",
             model_name=model_name,
             prompt_version=prompt_version,
             status=AuditStatus.SUCCESS,
@@ -184,6 +184,7 @@ class ReprocessService:
             raw_entry_id=raw_entry_id,
             action=AuditAction.VALIDATION_COMPLETED,
             actor="system",
+            method="reprocess",
             status=AuditStatus.SUCCESS,
         ))
 
