@@ -20,7 +20,7 @@ Status: mostly complete.
 
 Goal: make PIE Core reliable as a local memory, validation, review, search, and reporting system.
 
-- [ ] Add human-in-the-loop review workflow for `needs_review` entries.
+- [ ] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
 - [ ] Add entries list/show commands.
 - [ ] Add local textual search.
 - [ ] Add safe reprocessing for existing raw entries.
@@ -31,6 +31,25 @@ Goal: make PIE Core reliable as a local memory, validation, review, search, and 
 - [ ] Expand tests for review, search, reprocessing, and reporting.
 
 See [Core v1 Gap Analysis](core_v1_gap_analysis.md).
+
+### Phase 2D: Human-In-The-Loop Review
+
+Design: [Human Review Design](human_review_design.md).
+
+Planned first implementation:
+
+- [ ] `pie review list`
+- [ ] `pie review show <id>`
+- [ ] `pie review approve <id>`
+- [ ] `pie review reject <id>`
+- [ ] audit actions for `review.approved` and `review.rejected`
+- [ ] keep review local-only with no external actions
+
+Deferred:
+
+- [ ] `pie review edit <id>`
+- [ ] batch review actions
+- [ ] assistant-assisted review
 
 ## Block C: Assistant Foundation
 

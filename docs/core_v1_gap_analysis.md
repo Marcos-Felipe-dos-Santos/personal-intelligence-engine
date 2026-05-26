@@ -21,12 +21,22 @@ PIE Core is the memory and evidence layer of the project. Before building an Ass
 
 PIE can mark low-confidence entries as `needs_review`, but there is no user workflow for reviewing them.
 
+This is the next planned Core implementation block. See [Human Review Design](human_review_design.md).
+
 Needed:
 
 - list entries that need review
 - show raw and structured data side by side
 - accept, edit, or reject structured extraction
 - preserve review actions in audit logs
+
+Minimum first implementation:
+
+- `pie review list`
+- `pie review show <id>`
+- `pie review approve <id>`
+- `pie review reject <id>`
+- defer `pie review edit <id>` until the data model can preserve edit history clearly
 
 ### Entries List And Show
 
