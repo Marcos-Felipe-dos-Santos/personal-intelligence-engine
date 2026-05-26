@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -43,14 +42,7 @@ class BackupExportService:
         if backup_file.exists():
             raise FileExistsError(f"Backup file '{backup_file}' already exists.")
 
-        # Safely copy database pages using SQLite's backup API
-        src_conn = sqlite3.connect(str(db_path))
-        dest_conn = sqlite3.connect(str(backup_file))
-        try:
-            src_conn.backup(dest_conn)
-        finally:
-            dest_conn.close()
-            src_conn.close()
+        self.db.backup_to(backup_file)
 
         return backup_file
 

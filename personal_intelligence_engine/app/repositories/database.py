@@ -7,6 +7,7 @@ Services MUST NOT import sqlite3 directly — they use repositories instead.
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 from personal_intelligence_engine.app.config import Config
 
@@ -75,6 +76,16 @@ class Database:
                 (version,),
             )
             conn.commit()
+
+    def backup_to(self, destination: str | Path) -> None:
+        """Copy the SQLite database to destination using SQLite's backup API."""
+        source = sqlite3.connect(str(self._db_path))
+        target = sqlite3.connect(str(destination))
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+            source.close()
 
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         """Execute a SQL statement and return the cursor."""
