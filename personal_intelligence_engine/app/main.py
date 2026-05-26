@@ -6,6 +6,7 @@ Wires together config, database, repositories, services, and adapters.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from personal_intelligence_engine.app.adapters.fake_extractor import FakeExtractor
 from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractor, OllamaClient
@@ -236,6 +237,41 @@ class PIEApp:
         if row is None:
             raise ValueError(f"No review entry found for structured entry ID '{structured_entry_id}'.")
         return self._format_review_entry(row)
+
+    def approve_review_entry(self, structured_entry_id: str) -> dict:
+        """Approve one entry currently waiting for human review."""
+        row = self.entries_repo.get_review_candidate(structured_entry_id)
+        if row is None:
+            raise ValueError(f"No structured entry found for ID '{structured_entry_id}'.")
+
+        if row["raw_status"] != "needs_review" and row["validation_status"] != "needs_review":
+            return {
+                "status": "already_processed",
+                "structured_entry_id": row["structured_entry_id"],
+                "raw_entry_id": row["raw_entry_id"],
+                "message": "Entry is not in review; it is already processed or valid.",
+            }
+
+        updated_at = datetime.now(timezone.utc).isoformat()
+        self.entries_repo.mark_review_entry_approved(
+            structured_entry_id=row["structured_entry_id"],
+            raw_entry_id=row["raw_entry_id"],
+            updated_at=updated_at,
+        )
+        self.audit.log(AuditLogCreate(
+            raw_entry_id=row["raw_entry_id"],
+            action=AuditAction.REVIEW_APPROVED,
+            actor="user",
+            method="human_review",
+            status=AuditStatus.SUCCESS,
+        ))
+
+        return {
+            "status": "approved",
+            "structured_entry_id": row["structured_entry_id"],
+            "raw_entry_id": row["raw_entry_id"],
+            "message": "Entry approved and removed from review queue.",
+        }
 
     def close(self) -> None:
         """Close database connection."""

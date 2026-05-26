@@ -6,6 +6,7 @@ from pathlib import Path
 
 from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractor
 from personal_intelligence_engine.app.config import Config
+from personal_intelligence_engine.app.domain.schemas import AuditLogCreate
 from personal_intelligence_engine.app.domain.types import AuditAction, AuditStatus
 from personal_intelligence_engine.app.main import PIEApp
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService
@@ -40,6 +41,28 @@ class SensitiveFailingExtractor:
 
 class TestAuditLog:
     """Tests for audit log functionality."""
+
+    def test_review_audit_actions_are_supported_by_domain_enum(self):
+        """Human review audit actions are valid domain actions."""
+        assert AuditAction.REVIEW_APPROVED.value == "review_approved"
+        assert AuditAction.REVIEW_REJECTED.value == "review_rejected"
+        assert AuditAction.REVIEW_EDITED.value == "review_edited"
+
+    def test_review_audit_actions_are_accepted_by_schema(self):
+        """AuditLogCreate accepts human review audit actions."""
+        for action in (
+            AuditAction.REVIEW_APPROVED,
+            AuditAction.REVIEW_REJECTED,
+            AuditAction.REVIEW_EDITED,
+        ):
+            log = AuditLogCreate(
+                raw_entry_id="synthetic-raw-id",
+                action=action,
+                actor="user",
+                method="human_review",
+                status=AuditStatus.SUCCESS,
+            )
+            assert log.action == action
 
     def test_audit_logs_created(self, app):
         """Adding an entry creates audit log records."""

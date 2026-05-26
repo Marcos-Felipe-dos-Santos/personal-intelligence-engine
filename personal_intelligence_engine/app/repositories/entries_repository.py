@@ -154,6 +154,51 @@ class EntriesRepository:
             return None
         return dict(row)
 
+    def get_review_candidate(self, structured_entry_id: str) -> dict | None:
+        """Fetch one structured entry with raw status for review decisions."""
+        row = self._db.fetchone(
+            """
+            SELECT
+                s.id AS structured_entry_id,
+                s.raw_entry_id AS raw_entry_id,
+                s.entry_type AS entry_type,
+                s.project AS project,
+                s.summary AS summary,
+                s.confidence AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at AS created_at,
+                s.updated_at AS updated_at,
+                r.content AS raw_content,
+                r.status AS raw_status
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.id = ?;
+            """,
+            (structured_entry_id,),
+        )
+        if row is None:
+            return None
+        return dict(row)
+
+    def mark_review_entry_approved(
+        self,
+        *,
+        structured_entry_id: str,
+        raw_entry_id: str,
+        updated_at: str,
+    ) -> None:
+        """Mark a review entry as processed and valid."""
+        self._db.execute(
+            "UPDATE raw_entries SET status = ?, updated_at = ? WHERE id = ?;",
+            ("processed", updated_at, raw_entry_id),
+        )
+        self._db.execute(
+            "UPDATE structured_entries SET validation_status = ?, updated_at = ? WHERE id = ?;",
+            ("valid", updated_at, structured_entry_id),
+        )
+        self._db.commit()
+
     # --- Generated Files ---
 
     def insert_generated_file(self, gf: GeneratedFile) -> None:

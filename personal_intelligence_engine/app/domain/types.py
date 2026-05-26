@@ -45,6 +45,9 @@ class AuditAction(str, Enum):
     REPORT_GENERATED = "report_generated"
     LOW_CONFIDENCE = "low_confidence"
     VALIDATION_FAILED = "validation_failed"
+    REVIEW_APPROVED = "review_approved"
+    REVIEW_REJECTED = "review_rejected"
+    REVIEW_EDITED = "review_edited"
 
 
 class AuditStatus(str, Enum):

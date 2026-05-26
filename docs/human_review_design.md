@@ -1,6 +1,13 @@
 # Phase 2D: Human-In-The-Loop Review Design
 
-This document defines the technical design for Phase 2D. It is documentation only; no CLI command, schema change, migration, or service behavior is implemented here.
+This document defines the technical design for Phase 2D.
+
+Implementation status:
+
+- `pie review list` is implemented as read-only.
+- `pie review show <id>` is implemented as read-only.
+- `pie review approve <id>` is implemented as the first controlled write action.
+- `pie review reject <id>` and `pie review edit <id>` are not implemented.
 
 ## Objective
 
@@ -89,6 +96,8 @@ The command should display:
 
 Approves the current structured extraction.
 
+Status: implemented.
+
 Rules:
 
 - approval is local-only
@@ -131,7 +140,7 @@ Approval should:
 - operate on a single entry at first
 - mark the entry as reviewed or otherwise remove it from the review queue
 - keep structured entry ID and raw entry ID visible
-- record `review.approved` in audit logs
+- record `review_approved` in audit logs
 
 Approval should not:
 
@@ -149,7 +158,7 @@ Rejection should:
 - require explicit user intent
 - preserve raw entry content
 - prevent the structured output from being treated as reliable memory
-- record `review.rejected` in audit logs
+- record `review_rejected` in audit logs
 
 Rejection should not:
 
@@ -167,15 +176,15 @@ Minimum future requirement:
 - edited data must be validated
 - prior extracted values must remain traceable
 - edited entries must be distinguishable from model-only extractions
-- `review.edited` must be audit logged
+- `review_edited` must be audit logged
 
 ## Future Audit Actions
 
 Planned review audit actions:
 
-- `review.approved`
-- `review.rejected`
-- `review.edited`
+- `review_approved`
+- `review_rejected`
+- `review_edited`
 
 Audit records should include:
 
