@@ -127,6 +127,25 @@ pie export markdown
 
 Os backups são salvos em `backups/` e as exportações em `exports/` (ambos diretórios são ignorados pelo Git). Esses diretórios são configuráveis via `PIE_BACKUP_DIR` e `PIE_EXPORT_DIR`.
 
+#### Reprocessando Entradas Armazenadas
+
+```bash
+# Visualizar alterações para uma entrada específica (dry-run)
+pie entries reprocess <structured_entry_id> --dry-run
+
+# Reprocessar uma entrada específica e aplicar alterações
+pie entries reprocess <structured_entry_id>
+
+# Visualizar alterações para entradas com status needs_review (dry-run)
+pie entries reprocess --status needs_review --dry-run --limit 5
+
+# Reprocessar entradas com status needs_review e aplicar alterações
+pie entries reprocess --status needs_review
+```
+
+> [!IMPORTANT]
+> Recomenda-se fortemente realizar um backup do banco de dados (ex: `pie backup create`) antes de executar o reprocessamento. O reprocessamento salva revisões no banco, mas não atualiza automaticamente arquivos de notas Markdown em `notes/`.
+
 ### Extração local com LLM opcional
 
 O PIE usa o `FakeExtractor` determinístico por padrão. Ele não exige Ollama, APIs de nuvem, nem qualquer serviço externo.

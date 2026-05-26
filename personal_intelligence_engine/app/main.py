@@ -26,12 +26,14 @@ from personal_intelligence_engine.app.repositories.audit_repository import Audit
 from personal_intelligence_engine.app.repositories.database import Database
 from personal_intelligence_engine.app.repositories.entries_repository import EntriesRepository
 from personal_intelligence_engine.app.repositories.reports_repository import ReportsRepository
+from personal_intelligence_engine.app.repositories.revisions_repository import RevisionsRepository
 from personal_intelligence_engine.app.services.audit_service import AuditService
 from personal_intelligence_engine.app.services.backup_export_service import BackupExportService
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService, Extractor
 from personal_intelligence_engine.app.services.ingestion_service import IngestionService
 from personal_intelligence_engine.app.services.markdown_service import MarkdownService
 from personal_intelligence_engine.app.services.report_service import ReportService
+from personal_intelligence_engine.app.services.reprocess_service import ReprocessService
 from personal_intelligence_engine.app.services.validation_service import ValidationService
 
 
@@ -50,6 +52,7 @@ class PIEApp:
         self.entries_repo = EntriesRepository(self.db)
         self.audit_repo = AuditRepository(self.db)
         self.reports_repo = ReportsRepository(self.db)
+        self.revisions_repo = RevisionsRepository(self.db)
 
         # Adapters
         self.extractor = self._build_extractor()
@@ -68,6 +71,15 @@ class PIEApp:
             self.config.local_timezone,
         )
         self.backup_export = BackupExportService(self.config, self.db)
+        self.reprocess = ReprocessService(
+            self.config,
+            self.db,
+            self.entries_repo,
+            self.revisions_repo,
+            self.extraction,
+            self.audit,
+            self.extractor,
+        )
 
     def _build_extractor(self) -> Extractor:
         """Build the configured extraction adapter."""
@@ -418,6 +430,18 @@ class PIEApp:
             "export_path": str(path),
             "status": "ok",
         }
+
+    def reprocess_entry(self, structured_entry_id: str, dry_run: bool = True) -> dict:
+        """Reprocess a single structured entry by re-running extraction."""
+        return self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run)
+
+    def reprocess_entries_by_status(self, status: str, limit: int = 20, dry_run: bool = True) -> list[dict]:
+        """Reprocess structured entries filtered by status."""
+        ids = self.entries_repo.list_entries_by_status(status, limit=limit)
+        results = []
+        for structured_entry_id in ids:
+            results.append(self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run))
+        return results
 
     def _extractor_method(self) -> str:
         """Return a short audit method for the configured extractor."""

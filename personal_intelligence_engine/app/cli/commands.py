@@ -444,6 +444,89 @@ def entries_show(structured_entry_id: str) -> None:
             app.close()
 
 
+@entries.command(name="reprocess")
+@click.argument("structured_entry_id", required=False)
+@click.option("--status", default=None, help="Filter entries to reprocess by status/validation status.")
+@click.option("--limit", default=20, show_default=True, type=int, help="Maximum entries to reprocess when status is specified.")
+@click.option("--dry-run", is_flag=True, help="Show comparison of changes without applying them.")
+def entries_reprocess(
+    structured_entry_id: str | None,
+    status: str | None,
+    limit: int,
+    dry_run: bool,
+) -> None:
+    """Reprocess existing stored entries.
+
+    Must specify either a structured_entry_id or --status (but not both).
+
+    Examples:
+        pie entries reprocess a1b2c3d4-e5f6-7890-abcd-ef1234567890 --dry-run
+        pie entries reprocess --status needs_review
+    """
+    if structured_entry_id is None and status is None:
+        raise click.UsageError("Must specify either STRUCTURED_ENTRY_ID or --status.")
+    if structured_entry_id is not None and status is not None:
+        raise click.UsageError("Cannot specify both STRUCTURED_ENTRY_ID and --status.")
+
+    # Recommend backup before applying changes
+    if not dry_run:
+        click.echo("[INFO] Recomenda-se realizar um backup do banco de dados (ex: 'pie backup create') antes de aplicar o reprocessamento.")
+        click.echo("")
+
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        if structured_entry_id is not None:
+            # Reprocess single entry
+            result = app.reprocess_entry(structured_entry_id, dry_run=dry_run)
+            results = [result]
+        else:
+            # Reprocess by status
+            results = app.reprocess_entries_by_status(status, limit=limit, dry_run=dry_run)
+            if not results:
+                click.echo(f"Nenhuma entrada encontrada com o status '{status}'.")
+                return
+
+        # Show comparison/summary of results
+        for res in results:
+            entry_id = res["structured_entry_id"]
+            comp = res["comparison"]
+            has_changes = res["has_changes"]
+            mode_str = " (Dry Run)" if dry_run else ""
+
+            click.echo(f"Structured Entry ID: {entry_id}{mode_str}")
+            if not has_changes:
+                click.echo("  No changes detected.")
+                click.echo("")
+                continue
+
+            for field, val in comp.items():
+                before = val["before"]
+                after = val["after"]
+                if before != after:
+                    before_str = f"'{before}'" if before is not None else "-"
+                    after_str = f"'{after}'" if after is not None else "-"
+                    if field == "confidence":
+                        before_str = f"{before:.0%}"
+                        after_str = f"{after:.0%}"
+                    elif field == "tags":
+                        before_str = ", ".join(before) if before else "-"
+                        after_str = ", ".join(after) if after else "-"
+
+                    click.echo(f"  - {field.replace('_', ' ').title()}: {before_str} -> {after_str}")
+            click.echo("")
+
+        if not dry_run:
+            click.echo("[OK] Reprocessamento aplicado com sucesso!")
+            click.echo("[WARNING] As notas Markdown em 'notes/' não foram regeneradas automaticamente e podem estar desatualizadas.")
+
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @cli.command()
 @click.argument("query")
 @click.option("--type", "entry_type", default=None, help="Filter by entry type.")

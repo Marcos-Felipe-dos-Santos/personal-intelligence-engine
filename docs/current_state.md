@@ -17,6 +17,7 @@ This document records the current project state before planning the next feature
 - Audit logs for pipeline events
 - Entries list/show commands for local inspection
 - Local textual search across stored entries
+- Safe reprocessing workflow and revisions history
 - Human review commands for list/show/approve/reject/history
 - Local backup and export commands
 - Synthetic extraction evaluation fixtures
@@ -30,6 +31,7 @@ This document records the current project state before planning the next feature
 - `pie add "text"` captures a raw entry, extracts structured data, validates it, writes Markdown, and records audit events.
 - `pie entries list` lists structured entries with optional filters.
 - `pie entries show <structured_entry_id>` shows details for one structured entry.
+- `pie entries reprocess <structured_entry_id>` re-runs extraction and updates structured entries safely.
 - `pie search "<query>"` runs local textual search across stored entries.
 - `pie review list` lists entries waiting for human review.
 - `pie review show <structured_entry_id>` shows a review entry.
@@ -90,7 +92,6 @@ Local validation is expected to run with:
 
 ## Current Limitations
 
-- There is no safe reprocessing workflow for existing raw entries.
 - Reports are limited; weekly, monthly, and project-specific reports are not implemented.
 - Human review edit is not implemented yet.
 - Backup/export files are plaintext local artifacts and must be protected by the user.

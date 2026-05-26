@@ -127,6 +127,25 @@ pie export markdown
 
 Backups are saved in `backups/` and exports in `exports/` (both directories are ignored by Git). These directories are configurable via `PIE_BACKUP_DIR` and `PIE_EXPORT_DIR`.
 
+#### Reprocessing Stored Entries
+
+```bash
+# Preview changes for a specific entry (dry-run)
+pie entries reprocess <structured_entry_id> --dry-run
+
+# Reprocess a specific entry and apply changes
+pie entries reprocess <structured_entry_id>
+
+# Preview changes for entries with needs_review status (dry-run)
+pie entries reprocess --status needs_review --dry-run --limit 5
+
+# Reprocess entries with needs_review status and apply changes
+pie entries reprocess --status needs_review
+```
+
+> [!IMPORTANT]
+> Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database but does not automatically regenerate note Markdown files in `notes/`.
+
 ### Optional Local LLM Extraction
 
 PIE uses the deterministic `FakeExtractor` by default. It does not require Ollama, cloud APIs, or any external service.

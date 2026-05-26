@@ -58,14 +58,13 @@ Design decision for future edit: use a dedicated revision/snapshot model before 
 
 ### Reprocessing
 
-There is no safe way to re-run extraction for an existing raw entry.
+**Implemented.** Available via `pie entries reprocess`.
 
-Needed:
-
-- reprocess one raw entry
-- optionally reprocess entries matching a filter
-- preserve old structured output or record replacement clearly
-- audit extractor backend, model, prompt version, and reason for reprocessing
+- `pie entries reprocess <structured_entry_id>` re-runs extraction and validation safely.
+- Batch reprocessing supported via `--status needs_review` with a default limit of 20 entries.
+- A `--dry-run` flag allows previewing before/after field differences.
+- Revision snapshots (omitting raw content to prevent duplication) are stored in `structured_entry_revisions`.
+- Standard audit logs (`extraction_completed` and `validation_completed`) track execution details.
 
 ### Weekly And Project Reports
 

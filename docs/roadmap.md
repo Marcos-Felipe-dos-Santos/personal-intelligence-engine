@@ -23,7 +23,7 @@ Goal: make PIE Core reliable as a local memory, validation, review, search, and 
 - [ ] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
 - [x] Add entries list/show commands.
 - [x] Add local textual search.
-- [ ] Add safe reprocessing for existing raw entries.
+- [x] Add safe reprocessing for existing raw entries.
 - [ ] Add weekly reports.
 - [ ] Add project-specific reports.
 - [x] Add backup/export command.

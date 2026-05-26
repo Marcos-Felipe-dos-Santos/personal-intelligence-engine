@@ -361,3 +361,56 @@ class EntriesRepository:
             (gf.id, gf.raw_entry_id, gf.file_type, gf.path, gf.content_hash, gf.created_at),
         )
         self._db.commit()
+
+    def update_structured_entry(
+        self,
+        *,
+        structured_entry_id: str,
+        entry_type: str,
+        project: str | None,
+        summary: str,
+        confidence: float,
+        structured_json: str,
+        validation_status: str,
+        updated_at: str,
+    ) -> None:
+        """Update a structured entry with new extraction results."""
+        self._db.execute(
+            """
+            UPDATE structured_entries
+            SET entry_type = ?,
+                project = ?,
+                summary = ?,
+                confidence = ?,
+                structured_json = ?,
+                validation_status = ?,
+                updated_at = ?
+            WHERE id = ?;
+            """,
+            (
+                entry_type,
+                project,
+                summary,
+                confidence,
+                structured_json,
+                validation_status,
+                updated_at,
+                structured_entry_id,
+            ),
+        )
+        self._db.commit()
+
+    def list_entries_by_status(self, status: str, limit: int) -> list[str]:
+        """Fetch structured entry IDs where validation_status or raw status matches."""
+        rows = self._db.fetchall(
+            """
+            SELECT s.id
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.validation_status = ? OR r.status = ?
+            ORDER BY s.created_at DESC
+            LIMIT ?;
+            """,
+            (status, status, limit),
+        )
+        return [row["id"] for row in rows]
