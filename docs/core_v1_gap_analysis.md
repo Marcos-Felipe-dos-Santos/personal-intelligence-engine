@@ -81,14 +81,12 @@ Needed:
 
 ### Backup And Export
 
-There is no supported backup/export command.
+**Implemented.** Available via `pie backup create`, `pie export json`, and `pie export markdown`.
 
-Needed:
-
-- export SQLite database and generated projections safely
-- optional JSON export of selected entries
-- warning for plaintext sensitive data
-- documentation for encrypted backup locations
+- `pie backup create` creates a secure SQLite copy in `backups/` using SQLite's backup API.
+- `pie export json` exports all database tables (raw/structured entries, audit logs, generated files, reports, and revisions) to a single file in `exports/`.
+- `pie export markdown` exports structured entries grouped by entry type with safe snippets to a summaries file in `exports/`.
+- All backup and export files are local and ignored by Git to prevent sensitive plaintext exposure.
 
 ## Success Criteria For Core v1
 

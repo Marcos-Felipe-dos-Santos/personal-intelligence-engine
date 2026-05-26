@@ -75,3 +75,7 @@ temp/
 *.temp
 *.bak
 *.orig
+
+# Backups and exports
+backups/
+exports/

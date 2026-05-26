@@ -112,6 +112,21 @@ pie search "review" --status needs_review
 
 A busca procura texto no conteúdo bruto, resumo, projeto e JSON estruturado (incluindo tags). Os resultados mostram um snippet curto e a origem do match.
 
+#### Backup e Exportação
+
+```bash
+# Criar backup do banco de dados local
+pie backup create
+
+# Exportar tabelas em formato JSON
+pie export json
+
+# Exportar resumo de entradas estruturadas agrupadas por tipo em Markdown
+pie export markdown
+```
+
+Os backups são salvos em `backups/` e as exportações em `exports/` (ambos diretórios são ignorados pelo Git). Esses diretórios são configuráveis via `PIE_BACKUP_DIR` e `PIE_EXPORT_DIR`.
+
 ### Extração local com LLM opcional
 
 O PIE usa o `FakeExtractor` determinístico por padrão. Ele não exige Ollama, APIs de nuvem, nem qualquer serviço externo.

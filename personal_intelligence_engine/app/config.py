@@ -32,6 +32,8 @@ class Config:
         llm_max_retries: int | str | None = None,
         llm_retry_backoff_seconds: int | float | str | None = None,
         local_timezone: str | None = None,
+        backup_dir: str | Path | None = None,
+        export_dir: str | Path | None = None,
     ) -> None:
         self.database_path = Path(
             database_path or os.getenv("PIE_DATABASE_PATH", "pie.db")
@@ -44,6 +46,12 @@ class Config:
         )
         self.migrations_dir = Path(
             migrations_dir or _project_root / "migrations"
+        )
+        self.backup_dir = Path(
+            backup_dir or os.getenv("PIE_BACKUP_DIR", "backups")
+        )
+        self.export_dir = Path(
+            export_dir or os.getenv("PIE_EXPORT_DIR", "exports")
         )
         self.log_level = log_level or os.getenv("PIE_LOG_LEVEL", "INFO")
         self.extractor_backend = (

@@ -499,5 +499,76 @@ def search(
             app.close()
 
 
+@cli.group()
+def backup() -> None:
+    """Manage local database backups."""
+
+
+@backup.command(name="create")
+def backup_create() -> None:
+    """Create a secure copy of the local SQLite database.
+
+    Example:
+        pie backup create
+    """
+    config = Config()
+    if not config.database_path.exists():
+        raise click.ClickException(f"Could not access configured path: Database file '{config.database_path}' does not exist.")
+
+    app: PIEApp | None = None
+    try:
+        app = PIEApp(config=config)
+        result = app.create_backup()
+        click.echo(f"Backup created: {result['backup_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@cli.group()
+def export() -> None:
+    """Export PIE Core data to portable formats."""
+
+
+@export.command(name="json")
+def export_json() -> None:
+    """Export core tables to a single JSON file.
+
+    Example:
+        pie export json
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.export_json()
+        click.echo(f"JSON export created: {result['export_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@export.command(name="markdown")
+def export_markdown() -> None:
+    """Export structured entries grouped by type to Markdown.
+
+    Example:
+        pie export markdown
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.export_markdown()
+        click.echo(f"Markdown export created: {result['export_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 if __name__ == "__main__":
     cli()

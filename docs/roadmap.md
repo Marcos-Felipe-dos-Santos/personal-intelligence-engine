@@ -26,7 +26,7 @@ Goal: make PIE Core reliable as a local memory, validation, review, search, and 
 - [ ] Add safe reprocessing for existing raw entries.
 - [ ] Add weekly reports.
 - [ ] Add project-specific reports.
-- [ ] Add backup/export guidance or command.
+- [x] Add backup/export command.
 - [ ] Strengthen source citation in every memory-like output.
 - [ ] Expand tests for review, search, reprocessing, and reporting.
 

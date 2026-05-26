@@ -15,6 +15,8 @@ PIE is experimental software. Treat the local database, generated notes, generat
 | Reports | `reports/` | ❌ No | Generated summaries |
 | Audit logs | Inside SQLite | ❌ No | Pipeline event trail |
 | Configuration | `.env` | ❌ No | Local settings |
+| Database Backups | `backups/` (configurable) | ❌ No | Copies of SQLite database |
+| Data Exports | `exports/` (configurable) | ❌ No | Portable JSON and Markdown files |
 
 ## Git Safety Rules
 
@@ -24,6 +26,7 @@ Never commit real runtime data to Git:
 - SQLite databases such as `pie.db`, `*.db`, `*.sqlite`, and `*.sqlite3`.
 - SQLite sidecar files such as `*-wal`, `*-shm`, and `*-journal`.
 - Generated `notes/` and `reports/`.
+- Local `backups/` and `exports/`.
 - Runtime logs and local scratch files.
 
 Only commit synthetic examples under `examples/` and synthetic fixtures under `tests/`.
@@ -61,7 +64,7 @@ Only commit synthetic examples under `examples/` and synthetic fixtures under `t
 ## Recommendations
 
 1. **Enable disk encryption** on the machine running PIE.
-2. **Never commit** `pie.db`, `notes/`, `reports/`, `.env`, or logs to version control.
+2. **Never commit** `pie.db`, `notes/`, `reports/`, `backups/`, `exports/`, `.env`, or logs to version control.
 3. **Back up** your SQLite database regularly to an encrypted location.
 4. **Review** entries marked as `needs_review` — they may contain misclassified data.
 5. **Do not use** cloud LLM APIs with PIE without understanding the privacy implications.
@@ -74,5 +77,7 @@ To delete all PIE data:
 1. Delete the SQLite database file (default: `pie.db`).
 2. Delete the `notes/` directory.
 3. Delete the `reports/` directory.
+4. Delete the `backups/` directory.
+5. Delete the `exports/` directory.
 
 There is no cloud sync, no telemetry, and no analytics.

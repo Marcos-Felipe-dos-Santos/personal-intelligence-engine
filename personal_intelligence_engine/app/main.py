@@ -27,6 +27,7 @@ from personal_intelligence_engine.app.repositories.database import Database
 from personal_intelligence_engine.app.repositories.entries_repository import EntriesRepository
 from personal_intelligence_engine.app.repositories.reports_repository import ReportsRepository
 from personal_intelligence_engine.app.services.audit_service import AuditService
+from personal_intelligence_engine.app.services.backup_export_service import BackupExportService
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService, Extractor
 from personal_intelligence_engine.app.services.ingestion_service import IngestionService
 from personal_intelligence_engine.app.services.markdown_service import MarkdownService
@@ -66,6 +67,7 @@ class PIEApp:
             self.config.reports_dir,
             self.config.local_timezone,
         )
+        self.backup_export = BackupExportService(self.config, self.db)
 
     def _build_extractor(self) -> Extractor:
         """Build the configured extraction adapter."""
@@ -392,6 +394,30 @@ class PIEApp:
     def close(self) -> None:
         """Close database connection."""
         self.db.close()
+
+    def create_backup(self) -> dict:
+        """Create a secure backup of the SQLite database."""
+        path = self.backup_export.create_backup()
+        return {
+            "backup_path": str(path),
+            "status": "ok",
+        }
+
+    def export_json(self) -> dict:
+        """Export core database tables to a portable JSON format."""
+        path = self.backup_export.export_json()
+        return {
+            "export_path": str(path),
+            "status": "ok",
+        }
+
+    def export_markdown(self) -> dict:
+        """Export structured entries grouped by entry_type as Markdown."""
+        path = self.backup_export.export_markdown()
+        return {
+            "export_path": str(path),
+            "status": "ok",
+        }
 
     def _extractor_method(self) -> str:
         """Return a short audit method for the configured extractor."""
