@@ -21,8 +21,8 @@ Status: mostly complete.
 Goal: make PIE Core reliable as a local memory, validation, review, search, and reporting system.
 
 - [ ] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
-- [ ] Add entries list/show commands.
-- [ ] Add local textual search.
+- [x] Add entries list/show commands.
+- [x] Add local textual search.
 - [ ] Add safe reprocessing for existing raw entries.
 - [ ] Add weekly reports.
 - [ ] Add project-specific reports.

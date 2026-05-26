@@ -217,6 +217,134 @@ class EntriesRepository:
         )
         self._db.commit()
 
+    # --- Entries List / Show / Search ---
+
+    def list_entries(
+        self,
+        *,
+        entry_type: str | None = None,
+        project: str | None = None,
+        validation_status: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """List structured entries with optional filters."""
+        clauses: list[str] = []
+        params: list[str | int] = []
+
+        if entry_type is not None:
+            clauses.append("s.entry_type = ?")
+            params.append(entry_type)
+        if project is not None:
+            clauses.append("s.project = ?")
+            params.append(project)
+        if validation_status is not None:
+            clauses.append("s.validation_status = ?")
+            params.append(validation_status)
+
+        where = ""
+        if clauses:
+            where = "WHERE " + " AND ".join(clauses)
+
+        sql = f"""
+            SELECT
+                s.id              AS structured_entry_id,
+                s.raw_entry_id    AS raw_entry_id,
+                s.entry_type      AS entry_type,
+                s.project         AS project,
+                s.summary         AS summary,
+                s.confidence      AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at      AS created_at
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            {where}
+            ORDER BY s.created_at DESC
+            LIMIT ?;
+        """
+        params.append(limit)
+        rows = self._db.fetchall(sql, tuple(params))
+        return [dict(row) for row in rows]
+
+    def get_entry_detail(self, structured_entry_id: str) -> dict | None:
+        """Fetch full detail for one structured entry."""
+        row = self._db.fetchone(
+            """
+            SELECT
+                s.id              AS structured_entry_id,
+                s.raw_entry_id    AS raw_entry_id,
+                s.entry_type      AS entry_type,
+                s.project         AS project,
+                s.summary         AS summary,
+                s.confidence      AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at      AS created_at,
+                s.updated_at      AS updated_at,
+                r.content         AS raw_content
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.id = ?;
+            """,
+            (structured_entry_id,),
+        )
+        if row is None:
+            return None
+        return dict(row)
+
+    def search_entries(
+        self,
+        query: str,
+        *,
+        entry_type: str | None = None,
+        project: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Search entries by text across raw content, summary, project, and structured_json."""
+        like_pattern = f"%{query}%"
+        clauses = [
+            "(r.content LIKE ? OR s.summary LIKE ? OR s.project LIKE ? OR s.structured_json LIKE ?)"
+        ]
+        params: list[str | int] = [like_pattern, like_pattern, like_pattern, like_pattern]
+
+        if entry_type is not None:
+            clauses.append("s.entry_type = ?")
+            params.append(entry_type)
+        if project is not None:
+            clauses.append("s.project = ?")
+            params.append(project)
+
+        where = "WHERE " + " AND ".join(clauses)
+
+        sql = f"""
+            SELECT
+                s.id              AS structured_entry_id,
+                s.raw_entry_id    AS raw_entry_id,
+                s.entry_type      AS entry_type,
+                s.project         AS project,
+                s.summary         AS summary,
+                s.confidence      AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at      AS created_at,
+                r.content         AS raw_content,
+                CASE
+                    WHEN s.summary LIKE ? THEN 'summary'
+                    WHEN s.project LIKE ? THEN 'project'
+                    WHEN s.structured_json LIKE ? THEN 'structured_json'
+                    WHEN r.content LIKE ? THEN 'raw_content'
+                    ELSE 'unknown'
+                END AS match_source
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            {where}
+            ORDER BY s.created_at DESC
+            LIMIT ?;
+        """
+        params_full = [like_pattern, like_pattern, like_pattern, like_pattern] + params + [limit]
+        rows = self._db.fetchall(sql, tuple(params_full))
+        return [dict(row) for row in rows]
+
     # --- Generated Files ---
 
     def insert_generated_file(self, gf: GeneratedFile) -> None:

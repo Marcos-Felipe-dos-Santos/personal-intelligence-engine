@@ -350,5 +350,147 @@ def daily(date: str) -> None:
             app.close()
 
 
+@cli.group()
+def entries() -> None:
+    """Inspect stored entries."""
+
+
+@entries.command(name="list")
+@click.option("--type", "entry_type", default=None, help="Filter by entry type.")
+@click.option("--project", default=None, help="Filter by project.")
+@click.option("--status", "validation_status", default=None, help="Filter by validation status.")
+@click.option("--limit", default=50, show_default=True, type=int, help="Maximum entries to show.")
+def entries_list(
+    entry_type: str | None,
+    project: str | None,
+    validation_status: str | None,
+    limit: int,
+) -> None:
+    """List structured entries with optional filters.
+
+    Examples:
+        pie entries list
+        pie entries list --type decision
+        pie entries list --project PIE --limit 10
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        results = app.list_entries(
+            entry_type=entry_type,
+            project=project,
+            validation_status=validation_status,
+            limit=limit,
+        )
+        if not results:
+            click.echo("No entries found.")
+            return
+
+        click.echo(f"Entries ({len(results)}):")
+        for entry in results:
+            click.echo("")
+            click.echo(f"Structured Entry ID: {entry['structured_entry_id']}")
+            click.echo(f"Raw Entry ID:        {entry['raw_entry_id']}")
+            click.echo(f"Type:                {entry['entry_type']}")
+            click.echo(f"Project:             {entry['project'] or '-'}")
+            click.echo(f"Confidence:          {entry['confidence']:.0%}")
+            click.echo(f"Validation:          {entry['validation_status']}")
+            click.echo(f"Created At:          {entry['created_at']}")
+            click.echo(f"Summary:             {_shorten(entry['summary'])}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="show")
+@click.argument("structured_entry_id")
+def entries_show(structured_entry_id: str) -> None:
+    """Show details for one structured entry.
+
+    Example:
+        pie entries show a1b2c3d4-e5f6-...
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        entry = app.get_entry_detail(structured_entry_id)
+
+        click.echo(f"Structured Entry ID: {entry['structured_entry_id']}")
+        click.echo(f"Raw Entry ID:        {entry['raw_entry_id']}")
+        click.echo(f"Type:                {entry['entry_type']}")
+        click.echo(f"Project:             {entry['project'] or '-'}")
+        click.echo(f"Summary:             {entry['summary']}")
+        click.echo(f"Confidence:          {entry['confidence']:.0%}")
+        click.echo(f"Tags:                {', '.join(entry['tags']) if entry['tags'] else '-'}")
+        click.echo(f"Validation Status:   {entry['validation_status']}")
+        click.echo(f"Created At:          {entry['created_at']}")
+        click.echo(f"Updated At:          {entry['updated_at']}")
+        click.echo(f"Raw Content:         {_shorten(entry['raw_content'], limit=500)}")
+
+        # Show a compact view of structured_json
+        try:
+            import json
+            payload = json.loads(entry.get("structured_json") or "{}")
+            formatted = json.dumps(payload, indent=2, ensure_ascii=False)
+            click.echo(f"Structured JSON:     {_shorten(formatted, limit=500)}")
+        except (json.JSONDecodeError, TypeError):
+            click.echo("Structured JSON:     -")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@cli.command()
+@click.argument("query")
+@click.option("--type", "entry_type", default=None, help="Filter by entry type.")
+@click.option("--project", default=None, help="Filter by project.")
+@click.option("--limit", default=50, show_default=True, type=int, help="Maximum results to show.")
+def search(query: str, entry_type: str | None, project: str | None, limit: int) -> None:
+    """Search entries by text.
+
+    Searches across raw content, summary, project, and tags.
+
+    Examples:
+        pie search "SQLite"
+        pie search "SQLite" --type decision
+        pie search "pipeline" --project PIE
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        results = app.search_entries(
+            query,
+            entry_type=entry_type,
+            project=project,
+            limit=limit,
+        )
+        if not results:
+            click.echo("No search results found.")
+            return
+
+        click.echo(f"Search results ({len(results)}):")
+        for entry in results:
+            click.echo("")
+            click.echo(f"Structured Entry ID: {entry['structured_entry_id']}")
+            click.echo(f"Raw Entry ID:        {entry['raw_entry_id']}")
+            click.echo(f"Type:                {entry['entry_type']}")
+            click.echo(f"Project:             {entry['project'] or '-'}")
+            click.echo(f"Confidence:          {entry['confidence']:.0%}")
+            click.echo(f"Validation:          {entry['validation_status']}")
+            click.echo(f"Match Source:        {entry['match_source']}")
+            click.echo(f"Summary:             {_shorten(entry['summary'])}")
+            click.echo(f"Snippet:             {_shorten(entry['raw_content'], limit=120)}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 if __name__ == "__main__":
     cli()
+

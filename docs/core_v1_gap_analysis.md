@@ -42,25 +42,19 @@ Design decision for future edit: use a dedicated revision/snapshot model before 
 
 ### Entries List And Show
 
-There is no direct way to inspect stored entries from the CLI.
+**Implemented.** Available via `pie entries list` and `pie entries show <id>`.
 
-Needed:
-
-- `pie entries list`
-- filters by date, type, status, and project
-- `pie entries show <id>`
-- clear display of structured entry ID, raw entry ID, status, source, timestamps, tags, and summary
+- `pie entries list` with `--type`, `--project`, `--status`, and `--limit` filters
+- `pie entries show <structured_entry_id>` with full detail including tags, raw content snippet, and structured JSON
 
 ### Textual Search
 
-PIE does not yet expose search over captured memory.
+**Implemented.** Available via `pie search "<query>"`.
 
-Needed:
-
-- local text search over raw and structured entries
-- no external search service
-- basic filters by date, entry type, status, project, and tag
-- source IDs shown with every result
+- `pie search "<query>"` with `--type`, `--project`, and `--limit` filters
+- searches across raw content, summary, project, and structured JSON (including tags)
+- shows match source and short snippet per result
+- no external search service required
 
 ### Reprocessing
 

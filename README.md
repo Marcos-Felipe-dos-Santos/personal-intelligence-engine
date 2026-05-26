@@ -26,6 +26,7 @@ PIE can store sensitive personal data in local SQLite databases, generated Markd
 - 📊 **Report** — Daily reports with entry summaries
 - 🔒 **Audit** — Full pipeline traceability via audit logs
 - 🏠 **Local-first** — No cloud, no external APIs, no telemetry
+- 🔎 **Search** — Local text search across all entries
 
 ## 🚀 Quick Start
 
@@ -84,6 +85,31 @@ Output:
    Entries:      3
    File:         reports/daily_2026-05-09.md
 ```
+
+#### List entries
+
+```bash
+pie entries list
+pie entries list --type decision
+pie entries list --project PIE --limit 10
+pie entries list --status needs_review
+```
+
+#### Show entry details
+
+```bash
+pie entries show <structured_entry_id>
+```
+
+#### Search entries
+
+```bash
+pie search "SQLite"
+pie search "SQLite" --type decision
+pie search "pipeline" --project PIE
+```
+
+Search looks for text in raw content, summary, project, and structured JSON (including tags). Results show a short snippet and the match source.
 
 ### Optional Local LLM Extraction
 

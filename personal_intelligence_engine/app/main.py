@@ -333,6 +333,60 @@ class PIEApp:
             "message": "Entry rejected and removed from review queue.",
         }
 
+    # --- Entries List / Show / Search ---
+
+    def list_entries(
+        self,
+        *,
+        entry_type: str | None = None,
+        project: str | None = None,
+        validation_status: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """List structured entries with optional filters."""
+        rows = self.entries_repo.list_entries(
+            entry_type=entry_type,
+            project=project,
+            validation_status=validation_status,
+            limit=limit,
+        )
+        return [self._format_entry_row(row) for row in rows]
+
+    def get_entry_detail(self, structured_entry_id: str) -> dict:
+        """Get full detail for one structured entry."""
+        row = self.entries_repo.get_entry_detail(structured_entry_id)
+        if row is None:
+            raise ValueError(
+                f"No entry found for structured entry ID '{structured_entry_id}'."
+            )
+        result = self._format_entry_row(row)
+        result["updated_at"] = row["updated_at"]
+        result["raw_content"] = row["raw_content"]
+        return result
+
+    def search_entries(
+        self,
+        query: str,
+        *,
+        entry_type: str | None = None,
+        project: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Search entries by text across raw content, summary, project, and structured_json."""
+        rows = self.entries_repo.search_entries(
+            query,
+            entry_type=entry_type,
+            project=project,
+            limit=limit,
+        )
+        results = []
+        for row in rows:
+            entry = self._format_entry_row(row)
+            entry["raw_content"] = row["raw_content"]
+            entry["match_source"] = row.get("match_source", "unknown")
+            results.append(entry)
+        return results
+
     def close(self) -> None:
         """Close database connection."""
         self.db.close()
@@ -377,6 +431,30 @@ class PIEApp:
             "tags": tags,
             "validation_status": row["validation_status"],
             "raw_content": row["raw_content"],
+            "created_at": row["created_at"],
+        }
+
+    @staticmethod
+    def _format_entry_row(row: dict) -> dict:
+        """Convert an entries query row into CLI-friendly data."""
+        tags = []
+        try:
+            payload = json.loads(row.get("structured_json") or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload.get("tags"), list):
+            tags = [str(tag) for tag in payload["tags"]]
+
+        return {
+            "structured_entry_id": row["structured_entry_id"],
+            "raw_entry_id": row["raw_entry_id"],
+            "entry_type": row["entry_type"],
+            "project": row["project"],
+            "summary": row["summary"],
+            "confidence": row["confidence"],
+            "tags": tags,
+            "validation_status": row["validation_status"],
+            "structured_json": row.get("structured_json", "{}"),
             "created_at": row["created_at"],
         }
 

@@ -26,6 +26,7 @@ O PIE pode armazenar dados pessoais sensíveis em bancos SQLite locais, notas Ma
 - 📊 **Relatórios** — Relatórios diários com resumo de entradas
 - 🔒 **Auditoria** — Rastreabilidade completa via audit logs
 - 🏠 **Local-first** — Sem nuvem, sem APIs externas, sem telemetria
+- 🔎 **Busca** — Busca textual local em todas as entradas
 
 ## 🚀 Início Rápido
 
@@ -84,6 +85,31 @@ Saída:
    Entries:      3
    File:         reports/daily_2026-05-09.md
 ```
+
+#### Listar entradas
+
+```bash
+pie entries list
+pie entries list --type decision
+pie entries list --project PIE --limit 10
+pie entries list --status needs_review
+```
+
+#### Ver detalhes de uma entrada
+
+```bash
+pie entries show <structured_entry_id>
+```
+
+#### Buscar entradas
+
+```bash
+pie search "SQLite"
+pie search "SQLite" --type decision
+pie search "pipeline" --project PIE
+```
+
+A busca procura texto no conteúdo bruto, resumo, projeto e JSON estruturado (incluindo tags). Os resultados mostram um snippet curto e a origem do match.
 
 ### Extração local com LLM opcional
 
