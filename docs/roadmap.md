@@ -1,74 +1,98 @@
-# PIE — Roadmap
+# PIE Roadmap
 
-## Phase 1: Foundation ✅ (Current)
+PIE is experimental alpha software. The roadmap now separates the durable memory engine, called **PIE Core**, from a possible future **Assistant Layer**.
 
-- [x] Project structure and packaging
-- [x] SQLite database with migrations
-- [x] Pydantic schemas with validation
-- [x] FakeExtractor (deterministic, no LLM)
-- [x] Full pipeline: ingest → extract → validate → markdown → audit
-- [x] CLI: `pie add` and `pie report daily`
-- [x] Markdown notes with YAML frontmatter
-- [x] Daily reports with entry citations
-- [x] Audit logging for all pipeline events
-- [x] Low confidence detection and review flagging
-- [x] Test suite covering all pipeline stages
-- [x] Documentation: architecture, privacy, data model
+Core comes first. The Assistant Layer should only build on top of Core after review, search, traceability, and approval rules are mature.
 
-## Phase 2: Local LLM Integration
+## Block A: Repository And Docs Stabilization
 
-- [x] Phase 2A: Add optional Ollama-backed LocalLLMExtractor
-- [x] Implement extractor interface/protocol for swappable adapters
-- [x] Add prompt versioning and audit tracking
-- [x] Phase 2B: Add health check, retry/backoff, and troubleshooting docs
-- [ ] Phase 2C: Lightweight extraction quality evaluation ([planned issues](phase_2c_issues.md))
-- [ ] Compare FakeExtractor vs LLM results using synthetic fixtures
-- [ ] Add model-quality regression suite
-- [ ] Document confidence calibration limits
+Status: mostly complete.
 
-## Phase 3: Enhanced Input Sources
+- [x] Package, CLI, tests, and CI are in place.
+- [x] Privacy documentation and Git publication checklist exist.
+- [x] README files describe alpha status and local-first privacy risks.
+- [x] Synthetic extraction quality fixtures exist.
+- [x] Deterministic scoring, runner, Markdown report, and CLI evaluation exist.
+- [x] Current state, Core v1 gaps, vision, and future assistant architecture are documented.
+- [ ] Keep documentation aligned as Core v1 evolves.
 
-- [ ] File-based input (drag-and-drop text files)
-- [ ] Clipboard capture
-- [ ] Multi-line input mode in CLI
-- [ ] Batch import from JSON
-- [ ] Input deduplication via content_hash
+## Block B: Finish PIE Core v1
 
-## Phase 4: Search and Query
+Goal: make PIE Core reliable as a local memory, validation, review, search, and reporting system.
 
-- [ ] Full-text search in SQLite (FTS5)
-- [ ] Query by entry type, date range, project
-- [ ] Tag-based filtering
-- [ ] `pie search` CLI command
+- [ ] Add human-in-the-loop review workflow for `needs_review` entries.
+- [ ] Add entries list/show commands.
+- [ ] Add local textual search.
+- [ ] Add safe reprocessing for existing raw entries.
+- [ ] Add weekly reports.
+- [ ] Add project-specific reports.
+- [ ] Add backup/export guidance or command.
+- [ ] Strengthen source citation in every memory-like output.
+- [ ] Expand tests for review, search, reprocessing, and reporting.
 
-## Phase 5: Enhanced Reports
+See [Core v1 Gap Analysis](core_v1_gap_analysis.md).
 
-- [ ] Weekly and monthly reports
-- [ ] Project-specific reports
-- [ ] Trend analysis (entry type distribution over time)
-- [ ] Export to PDF
+## Block C: Assistant Foundation
 
-## Phase 6: Review Workflow
+Goal: design the Assistant Layer as a separate interaction layer that uses PIE Core as memory and tooling.
 
-- [ ] `pie review` command for needs_review entries
-- [ ] Manual reclassification
-- [ ] Confidence override
-- [ ] Feedback loop for extractor improvement
+- [ ] Define assistant intent categories.
+- [ ] Define tool contracts for safe Core access.
+- [ ] Prototype read-only assistant queries against Core data.
+- [ ] Require source citations in assistant answers.
+- [ ] Keep the assistant separate from the Core source of truth.
+- [ ] Document limits and user expectations.
 
-## Phase 7: Integrations (Optional)
+See [Vision](vision.md) and [Assistant Architecture](assistant_architecture.md).
 
-- [ ] ActivityWatch integration
-- [ ] Wakapi integration
-- [ ] Calendar integration
-- [ ] Browser extension for web captures
+## Block D: Approval Layer
 
-## Non-Goals
+Goal: require explicit user approval before writes, external actions, or sensitive operations.
 
-The following are explicitly **out of scope**:
+- [ ] Define action risk levels.
+- [ ] Add preview-before-write behavior.
+- [ ] Require confirmation for database writes.
+- [ ] Require confirmation for file creation, export, or deletion.
+- [ ] Audit approved actions.
+- [ ] Block prohibited actions by default.
 
-- Cloud synchronization
-- Mobile applications
-- Dashboard / Web UI (in early phases)
-- Email or messaging integration
-- Autonomous agents
-- Passive computer monitoring
+## Block E: External Read-Only Integrations
+
+Goal: allow carefully scoped read-only context after Core and approval rules are mature.
+
+- [ ] Define read-only connector policy.
+- [ ] Start with local files or exports, not live external writes.
+- [ ] Keep integrations opt-in.
+- [ ] Show what data was read.
+- [ ] Avoid storing unnecessary sensitive content.
+- [ ] Add tests with synthetic data only.
+
+## Block F: Controlled Write Integrations
+
+Goal: support write-capable tools only after the Approval Layer is reliable.
+
+- [ ] Require explicit confirmation for every write.
+- [ ] Show clear action previews.
+- [ ] Record audit events for approved writes.
+- [ ] Provide undo or recovery guidance where possible.
+- [ ] Keep dangerous or irreversible actions out of scope until proven safe.
+
+## Block G: Optional Voice Or Local UI
+
+Goal: improve interaction only after Core and approval foundations are stable.
+
+- [ ] Explore local UI options.
+- [ ] Explore optional local voice input/output.
+- [ ] Avoid voice cloning or character cloning.
+- [ ] Keep microphone behavior explicit and opt-in.
+- [ ] Keep text interface fully usable without voice.
+
+## Non-Goals For The Current Horizon
+
+- No autonomous external actions.
+- No voice cloning.
+- No fictional character cloning.
+- No cloud-first architecture.
+- No external write integrations before the Approval Layer.
+- No RAG or embeddings before Core v1 search and review are complete.
+- No dashboard until Core workflows are mature enough to justify it.

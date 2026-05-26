@@ -187,7 +187,11 @@ See [docs/roadmap.md](docs/roadmap.md) for the full development plan.
 ## 📖 Documentation
 
 - [Architecture](docs/architecture.md)
+- [Current State](docs/current_state.md)
+- [Vision](docs/vision.md)
+- [Assistant Architecture](docs/assistant_architecture.md)
 - [Data Model](docs/data_model.md)
+- [Core v1 Gap Analysis](docs/core_v1_gap_analysis.md)
 - [Privacy](docs/privacy.md)
 - [Roadmap](docs/roadmap.md)
 - [Troubleshooting](docs/troubleshooting.md)
