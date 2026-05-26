@@ -39,6 +39,20 @@ def _validate_json_string(value: str | None, field_name: str) -> str | None:
     return value
 
 
+def _validate_revision_snapshot_json(value: str, field_name: str) -> str:
+    """Validate structured revision snapshots without raw entry content."""
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{field_name} must contain valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{field_name} must contain a JSON object")
+    forbidden_keys = {"content", "raw_content"}
+    if forbidden_keys & set(payload):
+        raise ValueError(f"{field_name} must not contain raw entry content")
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Raw Entry
 # ---------------------------------------------------------------------------
@@ -134,6 +148,62 @@ class StructuredEntry(BaseModel):
     @classmethod
     def validate_structured_json(cls, v: str) -> str:
         return _validate_json_string(v, "structured_json") or "{}"
+
+
+class StructuredEntryRevisionCreate(BaseModel):
+    """Schema for recording before/after snapshots of a structured entry edit."""
+
+    structured_entry_id: str
+    raw_entry_id: str
+    before_json: str
+    after_json: str
+    changed_fields_json: str
+    reason: str | None = None
+    actor: str = Field(default="user", min_length=1)
+
+    @field_validator("before_json")
+    @classmethod
+    def validate_before_json(cls, v: str) -> str:
+        return _validate_revision_snapshot_json(v, "before_json")
+
+    @field_validator("after_json")
+    @classmethod
+    def validate_after_json(cls, v: str) -> str:
+        return _validate_revision_snapshot_json(v, "after_json")
+
+    @field_validator("changed_fields_json")
+    @classmethod
+    def validate_changed_fields_json(cls, v: str) -> str:
+        return _validate_json_string(v, "changed_fields_json") or "[]"
+
+
+class StructuredEntryRevision(BaseModel):
+    """Full structured entry revision as stored in the database."""
+
+    id: str = Field(default_factory=_new_id)
+    structured_entry_id: str
+    raw_entry_id: str
+    before_json: str
+    after_json: str
+    changed_fields_json: str
+    reason: str | None = None
+    actor: str = Field(default="user", min_length=1)
+    created_at: str = Field(default_factory=_utc_now)
+
+    @field_validator("before_json")
+    @classmethod
+    def validate_before_json(cls, v: str) -> str:
+        return _validate_revision_snapshot_json(v, "before_json")
+
+    @field_validator("after_json")
+    @classmethod
+    def validate_after_json(cls, v: str) -> str:
+        return _validate_revision_snapshot_json(v, "after_json")
+
+    @field_validator("changed_fields_json")
+    @classmethod
+    def validate_changed_fields_json(cls, v: str) -> str:
+        return _validate_json_string(v, "changed_fields_json") or "[]"
 
 
 # ---------------------------------------------------------------------------

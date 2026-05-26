@@ -4,6 +4,12 @@ This document defines a safe design for a future `pie review edit <structured_en
 
 PIE is experimental alpha software. Editing structured memory must preserve traceability before it becomes a user-facing feature.
 
+Implementation status:
+
+- The `structured_entry_revisions` data model is prepared.
+- `pie review edit` is not implemented.
+- Markdown regeneration is not implemented.
+
 ## Goals
 
 - Allow a human to correct structured extraction fields.
@@ -123,7 +129,7 @@ Recommended behavior:
 1. Load the current structured entry and raw entry.
 2. Validate proposed edits.
 3. Compute changed fields.
-4. Write one revision row with before/after snapshots.
+4. Write one `structured_entry_revisions` row with before/after snapshots.
 5. Update the current `structured_entries` row.
 6. Add audit log action `review_edited`.
 7. Mark the entry as reviewed/current according to the review status model chosen for implementation.

@@ -20,6 +20,31 @@ def test_schema_migrations_table_exists(app):
     assert row is not None
 
 
+def test_migration_003_is_applied(app):
+    row = app.db.fetchone(
+        "SELECT version FROM schema_migrations WHERE version = ?;",
+        ("003_create_structured_entry_revisions",),
+    )
+
+    assert row is not None
+
+
+def test_structured_entry_revisions_table_exists(app):
+    row = app.db.fetchone(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'structured_entry_revisions';"
+    )
+
+    assert row is not None
+
+
+def test_structured_entry_revisions_have_foreign_keys(app):
+    rows = app.db.fetchall("PRAGMA foreign_key_list(structured_entry_revisions);")
+    references = {(row["from"], row["table"], row["to"]) for row in rows}
+
+    assert ("structured_entry_id", "structured_entries", "id") in references
+    assert ("raw_entry_id", "raw_entries", "id") in references
+
+
 def test_structured_entries_reject_invalid_confidence(app):
     app.db.execute(
         """
@@ -82,6 +107,29 @@ def test_structured_entries_enforce_raw_entry_foreign_key(app):
                 "{}",
                 "valid",
                 "2026-05-09T00:00:00+00:00",
+                "2026-05-09T00:00:00+00:00",
+            ),
+        )
+
+
+def test_structured_entry_revisions_reject_invalid_foreign_keys(app):
+    with pytest.raises(sqlite3.IntegrityError):
+        app.db.execute(
+            """
+            INSERT INTO structured_entry_revisions
+                (id, structured_entry_id, raw_entry_id, before_json, after_json,
+                 changed_fields_json, reason, actor, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """,
+            (
+                "revision-missing-parents",
+                "missing-structured-entry",
+                "missing-raw-entry",
+                '{"summary": "Before"}',
+                '{"summary": "After"}',
+                '["summary"]',
+                None,
+                "user",
                 "2026-05-09T00:00:00+00:00",
             ),
         )
