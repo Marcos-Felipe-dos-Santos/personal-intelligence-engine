@@ -104,6 +104,56 @@ class EntriesRepository:
         )
         return [StructuredEntry(**dict(row)) for row in rows]
 
+    def list_entries_needing_review(self) -> list[dict]:
+        """Fetch structured entries whose raw entry is marked as needs_review."""
+        rows = self._db.fetchall(
+            """
+            SELECT
+                s.id AS structured_entry_id,
+                s.raw_entry_id AS raw_entry_id,
+                s.entry_type AS entry_type,
+                s.project AS project,
+                s.summary AS summary,
+                s.confidence AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at AS created_at,
+                r.content AS raw_content,
+                r.status AS raw_status
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE r.status = 'needs_review'
+            ORDER BY s.created_at;
+            """
+        )
+        return [dict(row) for row in rows]
+
+    def get_review_entry(self, structured_entry_id: str) -> dict | None:
+        """Fetch one structured entry in review by structured entry ID."""
+        row = self._db.fetchone(
+            """
+            SELECT
+                s.id AS structured_entry_id,
+                s.raw_entry_id AS raw_entry_id,
+                s.entry_type AS entry_type,
+                s.project AS project,
+                s.summary AS summary,
+                s.confidence AS confidence,
+                s.structured_json AS structured_json,
+                s.validation_status AS validation_status,
+                s.created_at AS created_at,
+                r.content AS raw_content,
+                r.status AS raw_status
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.id = ? AND r.status = 'needs_review';
+            """,
+            (structured_entry_id,),
+        )
+        if row is None:
+            return None
+        return dict(row)
+
     # --- Generated Files ---
 
     def insert_generated_file(self, gf: GeneratedFile) -> None:

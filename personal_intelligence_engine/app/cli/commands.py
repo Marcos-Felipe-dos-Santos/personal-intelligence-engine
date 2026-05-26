@@ -43,6 +43,14 @@ def _format_cli_error(exc: Exception) -> str:
     return str(exc)
 
 
+def _shorten(value: str, limit: int = 90) -> str:
+    """Return a compact single-line preview for CLI output."""
+    preview = " ".join(value.split())
+    if len(preview) <= limit:
+        return preview
+    return f"{preview[: limit - 3]}..."
+
+
 @click.group()
 @click.version_option(package_name="personal-intelligence-engine")
 def cli() -> None:
@@ -162,6 +170,65 @@ def _build_evaluation_extractor(backend: str):
         )
 
     raise ValueError(f"Invalid evaluation backend '{backend}'. Use 'fake' or 'ollama'.")
+
+
+@cli.group()
+def review() -> None:
+    """Inspect entries waiting for human review."""
+
+
+@review.command(name="list")
+def review_list() -> None:
+    """List entries marked as needs_review."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        entries = app.list_review_entries()
+        if not entries:
+            click.echo("[OK] No entries need review.")
+            return
+
+        click.echo("Entries needing review:")
+        for entry in entries:
+            click.echo("")
+            click.echo(f"Structured Entry ID: {entry['structured_entry_id']}")
+            click.echo(f"Raw Entry ID:        {entry['raw_entry_id']}")
+            click.echo(f"Type:                {entry['entry_type']}")
+            click.echo(f"Project:             {entry['project'] or '-'}")
+            click.echo(f"Confidence:          {entry['confidence']:.0%}")
+            click.echo(f"Created At:          {entry['created_at']}")
+            click.echo(f"Summary:             {_shorten(entry['summary'])}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@review.command(name="show")
+@click.argument("structured_entry_id")
+def review_show(structured_entry_id: str) -> None:
+    """Show details for one entry marked as needs_review."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        entry = app.get_review_entry(structured_entry_id)
+
+        click.echo(f"Structured Entry ID: {entry['structured_entry_id']}")
+        click.echo(f"Raw Entry ID:        {entry['raw_entry_id']}")
+        click.echo(f"Type:                {entry['entry_type']}")
+        click.echo(f"Project:             {entry['project'] or '-'}")
+        click.echo(f"Summary:             {entry['summary']}")
+        click.echo(f"Confidence:          {entry['confidence']:.0%}")
+        click.echo(f"Tags:                {', '.join(entry['tags']) if entry['tags'] else '-'}")
+        click.echo(f"Validation Status:   {entry['validation_status']}")
+        click.echo(f"Created At:          {entry['created_at']}")
+        click.echo(f"Raw Content:         {_shorten(entry['raw_content'], limit=500)}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
 
 
 @cli.group()

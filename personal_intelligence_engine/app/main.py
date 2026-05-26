@@ -5,6 +5,8 @@ Wires together config, database, repositories, services, and adapters.
 
 from __future__ import annotations
 
+import json
+
 from personal_intelligence_engine.app.adapters.fake_extractor import FakeExtractor
 from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractor, OllamaClient
 from personal_intelligence_engine.app.adapters.markdown_writer import MarkdownWriter
@@ -224,6 +226,17 @@ class PIEApp:
             "status": "ok",
         }
 
+    def list_review_entries(self) -> list[dict]:
+        """List entries currently waiting for human review."""
+        return [self._format_review_entry(row) for row in self.entries_repo.list_entries_needing_review()]
+
+    def get_review_entry(self, structured_entry_id: str) -> dict:
+        """Get one entry currently waiting for human review."""
+        row = self.entries_repo.get_review_entry(structured_entry_id)
+        if row is None:
+            raise ValueError(f"No review entry found for structured entry ID '{structured_entry_id}'.")
+        return self._format_review_entry(row)
+
     def close(self) -> None:
         """Close database connection."""
         self.db.close()
@@ -246,6 +259,30 @@ class PIEApp:
         if isinstance(prompt_version, str) and prompt_version:
             return prompt_version
         return None
+
+    @staticmethod
+    def _format_review_entry(row: dict) -> dict:
+        """Convert a review query row into CLI-friendly data."""
+        tags = []
+        try:
+            payload = json.loads(row.get("structured_json") or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload.get("tags"), list):
+            tags = [str(tag) for tag in payload["tags"]]
+
+        return {
+            "structured_entry_id": row["structured_entry_id"],
+            "raw_entry_id": row["raw_entry_id"],
+            "entry_type": row["entry_type"],
+            "project": row["project"],
+            "summary": row["summary"],
+            "confidence": row["confidence"],
+            "tags": tags,
+            "validation_status": row["validation_status"],
+            "raw_content": row["raw_content"],
+            "created_at": row["created_at"],
+        }
 
     @staticmethod
     def _summarize_error(exc: Exception, raw_text: str | None = None) -> str:
