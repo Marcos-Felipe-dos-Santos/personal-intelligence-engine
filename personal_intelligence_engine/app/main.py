@@ -435,13 +435,25 @@ class PIEApp:
         """Reprocess a single structured entry by re-running extraction."""
         return self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run)
 
-    def reprocess_entries_by_status(self, status: str, limit: int = 20, dry_run: bool = True) -> list[dict]:
+    def reprocess_entries_by_status(self, status: str, limit: int = 20, dry_run: bool = True) -> dict:
         """Reprocess structured entries filtered by status."""
         ids = self.entries_repo.list_entries_by_status(status, limit=limit)
-        results = []
+        applied = []
+        failed = []
         for structured_entry_id in ids:
-            results.append(self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run))
-        return results
+            try:
+                applied.append(self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run))
+            except Exception as exc:
+                failed.append({
+                    "structured_entry_id": structured_entry_id,
+                    "error": self._summarize_error(exc),
+                })
+        return {
+            "selected_ids": ids,
+            "applied": applied,
+            "failed": failed,
+            "dry_run": dry_run,
+        }
 
     def _extractor_method(self) -> str:
         """Return a short audit method for the configured extractor."""

@@ -7,6 +7,8 @@ Services MUST NOT import sqlite3 directly — they use repositories instead.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from personal_intelligence_engine.app.config import Config
@@ -19,6 +21,7 @@ class Database:
         self._config = config
         self._db_path = config.database_path
         self._conn: sqlite3.Connection | None = None
+        self._transaction_depth = 0
 
     @property
     def connection(self) -> sqlite3.Connection:
@@ -87,6 +90,30 @@ class Database:
             target.close()
             source.close()
 
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Run multiple repository writes inside one SQLite transaction."""
+        conn = self.connection
+        if self._transaction_depth > 0:
+            self._transaction_depth += 1
+            try:
+                yield
+            finally:
+                self._transaction_depth -= 1
+            return
+
+        conn.execute("BEGIN;")
+        self._transaction_depth = 1
+        try:
+            yield
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
+        finally:
+            self._transaction_depth = 0
+
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         """Execute a SQL statement and return the cursor."""
         return self.connection.execute(sql, params)
@@ -97,6 +124,8 @@ class Database:
 
     def commit(self) -> None:
         """Commit the current transaction."""
+        if self._transaction_depth > 0:
+            return
         self.connection.commit()
 
     def fetchone(self, sql: str, params: tuple = ()) -> sqlite3.Row | None:

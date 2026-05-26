@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from personal_intelligence_engine.app.cli.commands import cli
 from personal_intelligence_engine.app.domain.schemas import ExtractionResult
 from personal_intelligence_engine.app.domain.types import EntryType
+from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 
 
 def _configure_temp_env(monkeypatch, work_dir) -> None:
@@ -27,6 +28,16 @@ def _add_entry(text: str) -> str:
     match = re.search(r"Structured ID:\s+([0-9a-f-]+)", result.output)
     assert match is not None
     return match.group(1)
+
+
+def _raw_entry_id_for_structured_entry(db_path, structured_id: str) -> str:
+    with sqlite3.connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT raw_entry_id FROM structured_entries WHERE id = ?;",
+            (structured_id,),
+        ).fetchone()
+    assert row is not None
+    return row[0]
 
 
 def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
@@ -212,6 +223,119 @@ def test_reprocess_creates_audit_log(monkeypatch, work_dir):
         assert ("validation_completed", "reprocess") in logs
 
 
+def test_reprocess_rolls_back_if_structured_update_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    raw_text = "Eu decidi usar SQLite"
+    structured_id = _add_entry(raw_text)
+
+    def mock_extract(self, content):
+        return ExtractionResult(
+            entry_type=EntryType.IDEA,
+            summary="Should not be persisted",
+            confidence=0.99,
+            tags=["rollback"],
+        )
+
+    def fail_update(self, **kwargs):
+        raise RuntimeError("simulated structured update failure")
+
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+        mock_extract,
+    )
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.repositories.entries_repository."
+        "EntriesRepository.update_structured_entry",
+        fail_update,
+    )
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        before_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (structured_id,),
+        ).fetchone()
+        before_audit_count = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
+    result = CliRunner().invoke(cli, ["entries", "reprocess", structured_id])
+
+    assert result.exit_code != 0
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        after_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (structured_id,),
+        ).fetchone()
+        raw_entry = conn.execute("SELECT * FROM raw_entries;").fetchone()
+        revision_count = conn.execute(
+            "SELECT COUNT(*) FROM structured_entry_revisions;",
+        ).fetchone()[0]
+        after_audit_count = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
+    assert after_entry["entry_type"] == before_entry["entry_type"]
+    assert after_entry["summary"] == before_entry["summary"]
+    assert after_entry["confidence"] == before_entry["confidence"]
+    assert raw_entry["content"] == raw_text
+    assert revision_count == 0
+    assert after_audit_count == before_audit_count
+
+
+def test_reprocess_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    raw_text = "Eu decidi usar SQLite"
+    structured_id = _add_entry(raw_text)
+
+    def mock_extract(self, content):
+        return ExtractionResult(
+            entry_type=EntryType.IDEA,
+            summary="Should not be persisted",
+            confidence=0.99,
+            tags=["rollback"],
+        )
+
+    def fail_insert(self, log):
+        raise RuntimeError("simulated audit failure")
+
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+        mock_extract,
+    )
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.repositories.audit_repository.AuditRepository.insert",
+        fail_insert,
+    )
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        before_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (structured_id,),
+        ).fetchone()
+        before_audit_count = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
+    result = CliRunner().invoke(cli, ["entries", "reprocess", structured_id])
+
+    assert result.exit_code != 0
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        after_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (structured_id,),
+        ).fetchone()
+        raw_entry = conn.execute("SELECT * FROM raw_entries;").fetchone()
+        revision_count = conn.execute(
+            "SELECT COUNT(*) FROM structured_entry_revisions;",
+        ).fetchone()[0]
+        after_audit_count = conn.execute("SELECT COUNT(*) FROM audit_logs;").fetchone()[0]
+
+    assert after_entry["entry_type"] == before_entry["entry_type"]
+    assert after_entry["summary"] == before_entry["summary"]
+    assert after_entry["confidence"] == before_entry["confidence"]
+    assert raw_entry["content"] == raw_text
+    assert revision_count == 0
+    assert after_audit_count == before_audit_count
+
+
 def test_reprocess_missing_id_returns_error(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     _add_entry("Eu decidi usar SQLite")
@@ -253,6 +377,10 @@ def test_reprocess_by_status_selects_correct_entries(monkeypatch, work_dir):
     assert result.exit_code == 0, result.output
     assert needs_review_id in result.output
     assert valid_id not in result.output
+    assert "Batch Summary:" in result.output
+    assert "Total selected: 1" in result.output
+    assert "Total applied: 1" in result.output
+    assert "Total failed:   0" in result.output
 
     # DB verify
     with sqlite3.connect(work_dir / "pie.db") as conn:
@@ -265,6 +393,116 @@ def test_reprocess_by_status_selects_correct_entries(monkeypatch, work_dir):
         # The valid entry should not have changed (confidence remains 0.85)
         v_entry = conn.execute("SELECT * FROM structured_entries WHERE id = ?;", (valid_id,)).fetchone()
         assert v_entry["confidence"] == 0.85
+
+
+def test_reprocess_by_status_reports_partial_failure(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    success_id = _add_entry("Nota simples sem palavras chave sucesso")
+    failed_id = _add_entry("Nota simples sem palavras chave falha")
+    failed_raw_id = _raw_entry_id_for_structured_entry(work_dir / "pie.db", failed_id)
+
+    def mock_extract(self, content):
+        return ExtractionResult(
+            entry_type=EntryType.DECISION,
+            summary="Batch reprocess summary",
+            confidence=0.95,
+            tags=["batch"],
+        )
+
+    original_insert = AuditRepository.insert
+
+    def fail_for_one_entry(self, log):
+        if log.raw_entry_id == failed_raw_id and log.method == "reprocess:fake_extractor":
+            raise RuntimeError("simulated audit failure")
+        return original_insert(self, log)
+
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+        mock_extract,
+    )
+    monkeypatch.setattr(AuditRepository, "insert", fail_for_one_entry)
+
+    result = CliRunner().invoke(cli, ["entries", "reprocess", "--status", "needs_review"])
+
+    assert result.exit_code == 0, result.output
+    assert "Batch Summary:" in result.output
+    assert "Total selected: 2" in result.output
+    assert "Total applied: 1" in result.output
+    assert "Total failed:   1" in result.output
+    assert "Applied IDs:" in result.output
+    assert success_id in result.output
+    assert "Failed IDs:" in result.output
+    assert failed_id in result.output
+    assert "simulated audit failure" in result.output
+    assert "falhas parciais" in result.output
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        success_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (success_id,),
+        ).fetchone()
+        failed_entry = conn.execute(
+            "SELECT * FROM structured_entries WHERE id = ?;",
+            (failed_id,),
+        ).fetchone()
+        failed_revisions = conn.execute(
+            "SELECT COUNT(*) FROM structured_entry_revisions WHERE structured_entry_id = ?;",
+            (failed_id,),
+        ).fetchone()[0]
+        failed_reprocess_logs = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM audit_logs
+            WHERE raw_entry_id = ? AND method LIKE 'reprocess%';
+            """,
+            (failed_raw_id,),
+        ).fetchone()[0]
+
+    assert success_entry["summary"] == "Batch reprocess summary"
+    assert success_entry["validation_status"] == "valid"
+    assert failed_entry["summary"] != "Batch reprocess summary"
+    assert failed_entry["validation_status"] == "needs_review"
+    assert failed_revisions == 0
+    assert failed_reprocess_logs == 0
+
+
+def test_reprocess_by_status_all_failures_return_controlled_error(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    first_id = _add_entry("Nota simples sem palavras chave um")
+    second_id = _add_entry("Nota simples sem palavras chave dois")
+
+    def mock_extract(self, content):
+        return ExtractionResult(
+            entry_type=EntryType.DECISION,
+            summary="Should not persist",
+            confidence=0.95,
+            tags=["batch"],
+        )
+
+    def fail_update(self, **kwargs):
+        raise RuntimeError("simulated update failure")
+
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+        mock_extract,
+    )
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.repositories.entries_repository."
+        "EntriesRepository.update_structured_entry",
+        fail_update,
+    )
+
+    result = CliRunner().invoke(cli, ["entries", "reprocess", "--status", "needs_review"])
+
+    assert result.exit_code != 0
+    assert "Batch Summary:" in result.output
+    assert "Total selected: 2" in result.output
+    assert "Total applied: 0" in result.output
+    assert "Total failed:   2" in result.output
+    assert first_id in result.output
+    assert second_id in result.output
+    assert "All selected entries failed during reprocessing." in result.output
 
 
 def test_reprocess_by_status_respects_limit(monkeypatch, work_dir):

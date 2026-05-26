@@ -134,68 +134,69 @@ class ReprocessService:
             if before_dict[key] != after_dict[key]:
                 changed_fields.append(key)
 
-        # Create revision record
-        revision = StructuredEntryRevision(
-            id=str(uuid.uuid4()),
-            structured_entry_id=structured_entry_id,
-            raw_entry_id=raw_entry_id,
-            before_json=json.dumps(before_dict, ensure_ascii=False),
-            after_json=json.dumps(after_dict, ensure_ascii=False),
-            changed_fields_json=json.dumps(changed_fields, ensure_ascii=False),
-            reason="reprocess",
-            actor="system",
-        )
-        self.revisions_repo.create_revision(revision)
+        with self.db.transaction():
+            # Create revision record
+            revision = StructuredEntryRevision(
+                id=str(uuid.uuid4()),
+                structured_entry_id=structured_entry_id,
+                raw_entry_id=raw_entry_id,
+                before_json=json.dumps(before_dict, ensure_ascii=False),
+                after_json=json.dumps(after_dict, ensure_ascii=False),
+                changed_fields_json=json.dumps(changed_fields, ensure_ascii=False),
+                reason="reprocess",
+                actor="system",
+            )
+            self.revisions_repo.create_revision(revision)
 
-        # Update structured entry in DB
-        self.entries_repo.update_structured_entry(
-            structured_entry_id=structured_entry_id,
-            entry_type=extraction.entry_type.value,
-            project=extraction.project,
-            summary=extraction.summary,
-            confidence=extraction.confidence,
-            structured_json=new_payload_str,
-            validation_status=validation_status,
-            updated_at=updated_at,
-        )
+            # Update structured entry in DB
+            self.entries_repo.update_structured_entry(
+                structured_entry_id=structured_entry_id,
+                entry_type=extraction.entry_type.value,
+                project=extraction.project,
+                summary=extraction.summary,
+                confidence=extraction.confidence,
+                structured_json=new_payload_str,
+                validation_status=validation_status,
+                updated_at=updated_at,
+            )
 
-        # Update raw entry status
-        raw_status = "processed"
-        if extraction.confidence < 0.70:
-            raw_status = "needs_review"
-        self.entries_repo.update_raw_entry_status(raw_entry_id, raw_status, updated_at)
+            # Update raw entry status
+            raw_status = "processed"
+            if extraction.confidence < 0.70:
+                raw_status = "needs_review"
+            self.entries_repo.update_raw_entry_status(raw_entry_id, raw_status, updated_at)
 
-        # Log audit logs
-        method_name = self._extractor_method()
-        model_name = self._extractor_model_name()
-        prompt_version = self._extractor_prompt_version()
+            # Log audit logs
+            method_name = self._extractor_method()
+            model_name = self._extractor_model_name()
+            prompt_version = self._extractor_prompt_version()
 
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw_entry_id,
-            action=AuditAction.EXTRACTION_COMPLETED,
-            actor="system",
-            method=f"reprocess:{method_name}",
-            model_name=model_name,
-            prompt_version=prompt_version,
-            status=AuditStatus.SUCCESS,
-        ))
-
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw_entry_id,
-            action=AuditAction.VALIDATION_COMPLETED,
-            actor="system",
-            method="reprocess",
-            status=AuditStatus.SUCCESS,
-        ))
-
-        if extraction.confidence < 0.70:
             self.audit.log(AuditLogCreate(
                 raw_entry_id=raw_entry_id,
-                action=AuditAction.LOW_CONFIDENCE,
+                action=AuditAction.EXTRACTION_COMPLETED,
                 actor="system",
-                status=AuditStatus.WARNING,
-                error_message=f"Confidence {extraction.confidence:.2f} below threshold 0.70",
+                method=f"reprocess:{method_name}",
+                model_name=model_name,
+                prompt_version=prompt_version,
+                status=AuditStatus.SUCCESS,
             ))
+
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=raw_entry_id,
+                action=AuditAction.VALIDATION_COMPLETED,
+                actor="system",
+                method="reprocess",
+                status=AuditStatus.SUCCESS,
+            ))
+
+            if extraction.confidence < 0.70:
+                self.audit.log(AuditLogCreate(
+                    raw_entry_id=raw_entry_id,
+                    action=AuditAction.LOW_CONFIDENCE,
+                    actor="system",
+                    status=AuditStatus.WARNING,
+                    error_message=f"Confidence {extraction.confidence:.2f} below threshold 0.70",
+                ))
 
         return {
             "structured_entry_id": structured_entry_id,

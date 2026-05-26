@@ -51,6 +51,33 @@ def _shorten(value: str, limit: int = 90) -> str:
     return f"{preview[: limit - 3]}..."
 
 
+def _render_reprocess_batch_summary(batch: dict, dry_run: bool) -> None:
+    """Render batch reprocess totals without exposing raw content."""
+    applied = batch["applied"]
+    failed = batch["failed"]
+    selected_ids = batch["selected_ids"]
+    processed_label = "Previewed" if dry_run else "Applied"
+
+    click.echo("Batch Summary:")
+    click.echo(f"  Total selected: {len(selected_ids)}")
+    click.echo(f"  Total {processed_label.lower()}: {len(applied)}")
+    click.echo(f"  Total failed:   {len(failed)}")
+    click.echo(f"  {processed_label} IDs:")
+    if applied:
+        for result in applied:
+            click.echo(f"    - {result['structured_entry_id']}")
+    else:
+        click.echo("    - -")
+
+    click.echo("  Failed IDs:")
+    if failed:
+        for failure in failed:
+            click.echo(f"    - {failure['structured_entry_id']}: {_shorten(failure['error'], limit=160)}")
+    else:
+        click.echo("    - -")
+    click.echo("")
+
+
 @click.group()
 @click.version_option(package_name="personal-intelligence-engine")
 def cli() -> None:
@@ -486,12 +513,17 @@ def entries_reprocess(
             # Reprocess single entry
             result = app.reprocess_entry(structured_entry_id, dry_run=dry_run)
             results = [result]
+            batch = None
         else:
             # Reprocess by status
-            results = app.reprocess_entries_by_status(status, limit=limit, dry_run=dry_run)
+            batch = app.reprocess_entries_by_status(status, limit=limit, dry_run=dry_run)
+            results = batch["applied"]
             if not results:
-                click.echo(f"Nenhuma entrada encontrada com o status '{status}'.")
-                return
+                if not batch["failed"]:
+                    click.echo(f"Nenhuma entrada encontrada com o status '{status}'.")
+                    return
+                _render_reprocess_batch_summary(batch, dry_run)
+                raise click.ClickException("All selected entries failed during reprocessing.")
 
         # Show comparison/summary of results
         for res in results:
@@ -522,8 +554,14 @@ def entries_reprocess(
                     click.echo(f"  - {field.replace('_', ' ').title()}: {before_str} -> {after_str}")
             click.echo("")
 
+        if batch is not None:
+            _render_reprocess_batch_summary(batch, dry_run)
+
         if not dry_run:
-            click.echo("[OK] Reprocessamento aplicado com sucesso!")
+            if batch is not None and batch["failed"]:
+                click.echo("[WARNING] Reprocessamento concluido com falhas parciais.")
+            else:
+                click.echo("[OK] Reprocessamento aplicado com sucesso!")
             click.echo("[WARNING] As notas Markdown em 'notes/' não foram regeneradas automaticamente e podem estar desatualizadas.")
 
     except (ValidationError, ValueError, OSError) as exc:
