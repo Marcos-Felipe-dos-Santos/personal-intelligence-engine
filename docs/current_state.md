@@ -15,6 +15,10 @@ This document records the current project state before planning the next feature
 - Markdown notes written to `notes/`
 - Daily Markdown reports written to `reports/`
 - Audit logs for pipeline events
+- Entries list/show commands for local inspection
+- Local textual search across stored entries
+- Human review commands for list/show/approve/reject/history
+- Local backup and export commands
 - Synthetic extraction evaluation fixtures
 - Deterministic extraction quality scoring
 - Local extraction evaluation runner
@@ -24,7 +28,18 @@ This document records the current project state before planning the next feature
 ## Existing Commands
 
 - `pie add "text"` captures a raw entry, extracts structured data, validates it, writes Markdown, and records audit events.
+- `pie entries list` lists structured entries with optional filters.
+- `pie entries show <structured_entry_id>` shows details for one structured entry.
+- `pie search "<query>"` runs local textual search across stored entries.
+- `pie review list` lists entries waiting for human review.
+- `pie review show <structured_entry_id>` shows a review entry.
+- `pie review approve <structured_entry_id>` approves a review entry.
+- `pie review reject <structured_entry_id>` rejects a review entry.
+- `pie review history <structured_entry_id>` shows audit history for the related raw entry.
 - `pie report daily --date YYYY-MM-DD` generates a daily report for the configured local day.
+- `pie backup create` creates a local SQLite backup.
+- `pie export json` exports core database tables to JSON.
+- `pie export markdown` exports structured entries as grouped Markdown summaries.
 - `pie doctor` checks the configured extractor backend without creating entries.
 - `pie evaluate extraction --backend fake` runs synthetic extraction quality evaluation and prints Markdown.
 - `pie evaluate extraction --backend fake --output reports/evaluation/fake.md` saves the evaluation report to Markdown.
@@ -56,6 +71,10 @@ The test suite covers the current pipeline and evaluation utilities, including:
 - audit logging
 - daily reports
 - timezone behavior for daily reports
+- entries list/show
+- local textual search
+- human review list/show/approve/reject/history
+- local backup and export commands
 - prompt contract checks
 - extraction quality fixtures
 - extraction quality scoring
@@ -63,7 +82,7 @@ The test suite covers the current pipeline and evaluation utilities, including:
 - extraction evaluation Markdown reports
 - extraction evaluation CLI
 
-At the time of this document, local validation has been running with:
+Local validation is expected to run with:
 
 - `python -m pytest -q`
 - `python -m compileall personal_intelligence_engine`
@@ -71,12 +90,10 @@ At the time of this document, local validation has been running with:
 
 ## Current Limitations
 
-- No human-in-the-loop review command exists yet for `needs_review` entries.
-- There is no `entries list` or `entries show` command.
-- There is no textual search command yet.
 - There is no safe reprocessing workflow for existing raw entries.
 - Reports are limited; weekly, monthly, and project-specific reports are not implemented.
-- Backup/export flows are not implemented.
+- Human review edit is not implemented yet.
+- Backup/export files are plaintext local artifacts and must be protected by the user.
 - Optional Ollama extraction is experimental and depends on the user's local setup.
 - Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality.
 - There is no Assistant Layer implementation.
@@ -95,4 +112,5 @@ At the time of this document, local validation has been running with:
 - Local SQLite databases and Markdown files are plaintext unless the operating system protects them.
 - Optional local LLM extraction sends raw entry text to the configured local endpoint.
 - Generated reports can summarize sensitive patterns even when they do not include full raw text.
-- Real `pie.db`, `.env`, `notes/`, `reports/`, logs, and local scratch files must never be committed.
+- Local backups and exports may contain sensitive data.
+- Real `pie.db`, `.env`, `notes/`, `reports/`, `backups/`, `exports/`, logs, and local scratch files must never be committed.
