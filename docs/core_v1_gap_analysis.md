@@ -19,26 +19,15 @@ PIE Core is the memory and evidence layer of the project. Before building an Ass
 
 ### Human-In-The-Loop Review
 
-PIE can mark low-confidence entries as `needs_review`, but there is no user workflow for reviewing them.
+**Implemented.** Available via `pie review`.
 
-This is the next planned Core implementation block. See [Human Review Design](human_review_design.md).
-
-Needed:
-
-- list entries that need review
-- show raw and structured data side by side
-- accept, edit, or reject structured extraction
-- preserve review actions in audit logs
-
-Minimum first implementation:
-
-- `pie review list`
-- `pie review show <id>`
-- `pie review approve <id>`
-- `pie review reject <id>`
-- defer `pie review edit <id>` until the revision model is implemented
-
-Design decision for future edit: use a dedicated revision/snapshot model before updating structured data. See [Review Edit Design](review_edit_design.md).
+- `pie review list` lists entries that need human review.
+- `pie review show <id>` shows raw and structured data side by side.
+- `pie review approve <id>` approves the structured entry.
+- `pie review reject <id>` rejects the structured entry.
+- `pie review history <id>` shows the audit history.
+- Preserve review actions in audit logs.
+- Defer `pie review edit <id>` until the revision model is implemented. (Design decision for future edit: use a dedicated revision/snapshot model before updating structured data. See [Review Edit Design](review_edit_design.md)).
 
 ### Entries List And Show
 
@@ -62,21 +51,23 @@ Design decision for future edit: use a dedicated revision/snapshot model before 
 
 - `pie entries reprocess <structured_entry_id>` re-runs extraction and validation safely.
 - Batch reprocessing supported via `--status needs_review` with a default limit of 20 entries.
+- Batch reprocessing uses one transaction per entry. It is not all-or-nothing for the whole batch.
+- Partial success can happen: successful entries remain applied, and failed entries are rolled back completely.
+- Batch output reports total selected, total applied, total failed, applied IDs, failed IDs, and a short error for each failed ID.
 - A `--dry-run` flag allows previewing before/after field differences.
 - Revision snapshots (omitting raw content to prevent duplication) are stored in `structured_entry_revisions`.
+- `raw_entries.content` remains immutable during reprocessing.
 - Standard audit logs (`extraction_completed` and `validation_completed`) track execution details.
 
 ### Weekly And Project Reports
 
-Daily reports exist, but Core v1 needs more practical reporting.
+**Implemented.** Available via `pie report weekly` and `pie report project`.
 
-Needed:
-
-- weekly report
-- project-specific report
-- clear source entry citations
-- no invented information
-- local timezone behavior documented and tested
+- `pie report weekly --date YYYY-MM-DD` generates weekly summaries from Monday to Sunday.
+- `pie report project --project <name>` filters and summarizes entries for a specific project.
+- Excludes full raw content to avoid leaking sensitive information.
+- Includes structured and raw source entry citations.
+- Timezone conversions run on configured local timezone.
 
 ### Backup And Export
 

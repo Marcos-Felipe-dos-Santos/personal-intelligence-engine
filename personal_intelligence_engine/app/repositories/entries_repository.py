@@ -414,3 +414,11 @@ class EntriesRepository:
             (status, status, limit),
         )
         return [row["id"] for row in rows]
+
+    def get_structured_entries_by_project(self, project: str) -> list[StructuredEntry]:
+        """Fetch all structured entries for a specific project."""
+        rows = self._db.fetchall(
+            "SELECT * FROM structured_entries WHERE project = ? ORDER BY created_at DESC;",
+            (project,),
+        )
+        return [StructuredEntry(**dict(row)) for row in rows]

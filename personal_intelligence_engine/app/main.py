@@ -241,6 +241,67 @@ class PIEApp:
             "status": "ok",
         }
 
+    def generate_weekly_report(self, date_str: str) -> dict:
+        """Generate a weekly report for the week containing the given date.
+
+        Args:
+            date_str: Date in YYYY-MM-DD format.
+
+        Returns:
+            Dict with report_id, file_path, entry_count, date_start, date_end, status.
+        """
+        report = self.report.generate_weekly_report(date_str)
+
+        # Audit: report generated
+        self.audit.log(AuditLogCreate(
+            action=AuditAction.REPORT_GENERATED,
+            actor="system",
+            method="weekly_report",
+            status=AuditStatus.SUCCESS,
+        ))
+
+        import json
+        entry_ids = json.loads(report.source_entry_ids_json)
+
+        return {
+            "report_id": report.id,
+            "file_path": report.file_path,
+            "entry_count": len(entry_ids),
+            "date_start": report.date_start,
+            "date_end": report.date_end,
+            "status": "ok",
+        }
+
+    def generate_project_report(self, project: str) -> dict:
+        """Generate a project report for the given project name.
+
+        Args:
+            project: The name of the project.
+
+        Returns:
+            Dict with report_id, file_path, entry_count, project, status.
+        """
+        report = self.report.generate_project_report(project)
+
+        # Audit: report generated
+        self.audit.log(AuditLogCreate(
+            action=AuditAction.REPORT_GENERATED,
+            actor="system",
+            method="project_report",
+            status=AuditStatus.SUCCESS,
+        ))
+
+        import json
+        entry_ids = json.loads(report.source_entry_ids_json)
+
+        return {
+            "report_id": report.id,
+            "file_path": report.file_path,
+            "entry_count": len(entry_ids),
+            "project": project,
+            "status": "ok",
+        }
+
     def list_review_entries(self) -> list[dict]:
         """List entries currently waiting for human review."""
         return [self._format_review_entry(row) for row in self.entries_repo.list_entries_needing_review()]

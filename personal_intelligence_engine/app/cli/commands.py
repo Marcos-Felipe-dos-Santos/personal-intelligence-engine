@@ -377,6 +377,65 @@ def daily(date: str) -> None:
             app.close()
 
 
+@report.command(name="weekly")
+@click.option(
+    "--date",
+    required=True,
+    help="Date for the report in YYYY-MM-DD format (any day of the week).",
+)
+def weekly(date: str) -> None:
+    """Generate a weekly report.
+
+    Example:
+        pie report weekly --date 2026-05-09
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.generate_weekly_report(date)
+
+        click.echo("[OK] Weekly report generated!")
+        click.echo(f"   Report ID:    {result['report_id']}")
+        click.echo(f"   Start Date:   {result['date_start']}")
+        click.echo(f"   End Date:     {result['date_end']}")
+        click.echo(f"   Entries:      {result['entry_count']}")
+        click.echo(f"   File:         {result['file_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@report.command(name="project")
+@click.option(
+    "--project",
+    required=True,
+    help="Project name for the report.",
+)
+def project_report(project: str) -> None:
+    """Generate a project report.
+
+    Example:
+        pie report project --project PIE
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.generate_project_report(project)
+
+        click.echo("[OK] Project report generated!")
+        click.echo(f"   Report ID:    {result['report_id']}")
+        click.echo(f"   Project:      {result['project']}")
+        click.echo(f"   Entries:      {result['entry_count']}")
+        click.echo(f"   File:         {result['file_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @cli.group()
 def entries() -> None:
     """Inspect stored entries."""

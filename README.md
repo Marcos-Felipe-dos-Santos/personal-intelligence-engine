@@ -86,6 +86,41 @@ Output:
    File:         reports/daily_2026-05-09.md
 ```
 
+#### Generate a weekly report
+
+```bash
+pie report weekly --date 2026-05-26
+```
+
+Generates a Markdown report of the week containing the specified date (from Monday to Sunday), grouping entries by type and validation status.
+
+Output:
+```
+[OK] Weekly report generated!
+   Report ID:    w3x4y5z6-...
+   Start Date:   2026-05-25
+   End Date:     2026-05-31
+   Entries:      8
+   File:         reports/weekly_2026-05-25_to_2026-05-31.md
+```
+
+#### Generate a project report
+
+```bash
+pie report project --project PIE
+```
+
+Generates a Markdown report of all entries associated with the specified project name.
+
+Output:
+```
+[OK] Project report generated!
+   Report ID:    p7q8r9s0-...
+   Project:      PIE
+   Entries:      12
+   File:         reports/project_PIE.md
+```
+
 #### List entries
 
 ```bash
@@ -145,6 +180,8 @@ pie entries reprocess --status needs_review
 
 > [!IMPORTANT]
 > Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database but does not automatically regenerate note Markdown files in `notes/`.
+>
+> Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch. If one entry fails, that entry is rolled back completely while earlier successful entries remain applied. The command output reports total selected, total applied, total failed, applied IDs, failed IDs, and a short error per failed ID. `raw_entries.content` is never edited by reprocessing.
 
 ### Optional Local LLM Extraction
 

@@ -13,7 +13,7 @@ This document records the current project state before planning the next feature
 - Deterministic `FakeExtractor` as the default extractor
 - Optional `LocalLLMExtractor` for Ollama-compatible local extraction
 - Markdown notes written to `notes/`
-- Daily Markdown reports written to `reports/`
+- Daily, weekly, and project-specific Markdown reports written to `reports/`
 - Audit logs for pipeline events
 - Entries list/show commands for local inspection
 - Local textual search across stored entries
@@ -39,6 +39,8 @@ This document records the current project state before planning the next feature
 - `pie review reject <structured_entry_id>` rejects a review entry.
 - `pie review history <structured_entry_id>` shows audit history for the related raw entry.
 - `pie report daily --date YYYY-MM-DD` generates a daily report for the configured local day.
+- `pie report weekly --date YYYY-MM-DD` generates a weekly report.
+- `pie report project --project <name>` generates a project report.
 - `pie backup create` creates a local SQLite backup.
 - `pie export json` exports core database tables to JSON.
 - `pie export markdown` exports structured entries as grouped Markdown summaries.
@@ -72,7 +74,8 @@ The test suite covers the current pipeline and evaluation utilities, including:
 - Markdown generation
 - audit logging
 - daily reports
-- timezone behavior for daily reports
+- weekly and project reports
+- timezone behavior for reports
 - entries list/show
 - local textual search
 - human review list/show/approve/reject/history
@@ -92,8 +95,9 @@ Local validation is expected to run with:
 
 ## Current Limitations
 
-- Reports are limited; weekly, monthly, and project-specific reports are not implemented.
+- Reports are limited; monthly-specific reports are not implemented.
 - Human review edit is not implemented yet.
+- Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch; users must review partial-success summaries.
 - Backup/export files are plaintext local artifacts and must be protected by the user.
 - Optional Ollama extraction is experimental and depends on the user's local setup.
 - Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality.

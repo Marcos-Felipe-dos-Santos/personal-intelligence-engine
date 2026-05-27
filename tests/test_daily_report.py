@@ -11,10 +11,15 @@ from personal_intelligence_engine.app.domain.types import EntryType, ValidationS
 
 
 def _get_entry_date(app, entry_id: str) -> str:
-    """Extract the date portion from a structured entry's created_at."""
+    """Extract the date portion from a structured entry's created_at in local time."""
     structured = app.entries_repo.get_structured_entry_by_raw_id(entry_id)
     if structured:
-        return structured.created_at[:10]
+        parsed = datetime.fromisoformat(structured.created_at)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        from zoneinfo import ZoneInfo
+        local_tz = ZoneInfo(app.config.local_timezone)
+        return parsed.astimezone(local_tz).date().isoformat()
     return ""
 
 

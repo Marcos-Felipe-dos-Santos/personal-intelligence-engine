@@ -20,15 +20,15 @@ Status: mostly complete.
 
 Goal: make PIE Core reliable as a local memory, validation, review, search, and reporting system.
 
-- [ ] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
+- [x] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
 - [x] Add entries list/show commands.
 - [x] Add local textual search.
 - [x] Add safe reprocessing for existing raw entries.
-- [ ] Add weekly reports.
-- [ ] Add project-specific reports.
+- [x] Add weekly reports.
+- [x] Add project-specific reports.
 - [x] Add backup/export command.
 - [ ] Strengthen source citation in every memory-like output.
-- [ ] Expand tests for review, search, reprocessing, and reporting.
+- [x] Expand tests for review, search, reprocessing, and reporting.
 
 See [Core v1 Gap Analysis](core_v1_gap_analysis.md).
 
@@ -39,12 +39,12 @@ Edit design: [Review Edit Design](review_edit_design.md).
 
 Planned first implementation:
 
-- [ ] `pie review list`
-- [ ] `pie review show <id>`
-- [ ] `pie review approve <id>`
-- [ ] `pie review reject <id>`
-- [ ] audit actions for `review_approved` and `review_rejected`
-- [ ] keep review local-only with no external actions
+- [x] `pie review list`
+- [x] `pie review show <id>`
+- [x] `pie review approve <id>`
+- [x] `pie review reject <id>`
+- [x] audit actions for `review_approved` and `review_rejected`
+- [x] keep review local-only with no external actions
 
 Deferred:
 

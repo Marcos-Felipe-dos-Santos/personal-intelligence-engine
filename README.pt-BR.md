@@ -86,6 +86,41 @@ Saída:
    File:         reports/daily_2026-05-09.md
 ```
 
+#### Gerar relatório semanal
+
+```bash
+pie report weekly --date 2026-05-26
+```
+
+Gera um relatório Markdown da semana que contém a data especificada (de segunda a domingo), agrupando as entradas por tipo e status de validação.
+
+Saída:
+```
+[OK] Weekly report generated!
+   Report ID:    w3x4y5z6-...
+   Start Date:   2026-05-25
+   End Date:     2026-05-31
+   Entries:      8
+   File:         reports/weekly_2026-05-25_to_2026-05-31.md
+```
+
+#### Gerar relatório de projeto
+
+```bash
+pie report project --project PIE
+```
+
+Gera um relatório Markdown com todas as entradas associadas ao projeto especificado.
+
+Saída:
+```
+[OK] Project report generated!
+   Report ID:    p7q8r9s0-...
+   Project:      PIE
+   Entries:      12
+   File:         reports/project_PIE.md
+```
+
 #### Listar entradas
 
 ```bash
@@ -145,6 +180,8 @@ pie entries reprocess --status needs_review
 
 > [!IMPORTANT]
 > Recomenda-se fortemente realizar um backup do banco de dados (ex: `pie backup create`) antes de executar o reprocessamento. O reprocessamento salva revisões no banco, mas não atualiza automaticamente arquivos de notas Markdown em `notes/`.
+>
+> O reprocessamento em lote usa transação por entrada, não all-or-nothing para o lote inteiro. Se uma entrada falhar, ela sofre rollback completo, enquanto entradas anteriores processadas com sucesso permanecem aplicadas. A saída do comando mostra total selecionado, total aplicado, total com falha, IDs aplicados, IDs com falha e erro resumido por ID com falha. `raw_entries.content` nunca é editado pelo reprocessamento.
 
 ### Extração local com LLM opcional
 
