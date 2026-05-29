@@ -1,58 +1,54 @@
 # PIE Roadmap
 
-PIE is experimental alpha software. The roadmap now separates the durable memory engine, called **PIE Core**, from a possible future **Assistant Layer**.
+PIE is experimental alpha software. The roadmap separates the durable memory engine, called **PIE Core**, from a possible future **Assistant Layer**.
 
-Core comes first. The Assistant Layer should only build on top of Core after review, search, traceability, and approval rules are mature.
+Core comes first. The Assistant Layer should only build on top of Core after review, search, reporting, traceability, and approval rules are mature enough for real use.
 
-## Block A: Repository And Docs Stabilization
+## Block A: Repository And Documentation Stabilization
 
 Status: mostly complete.
 
 - [x] Package, CLI, tests, and CI are in place.
 - [x] Privacy documentation and Git publication checklist exist.
 - [x] README files describe alpha status and local-first privacy risks.
-- [x] Synthetic extraction quality fixtures exist.
-- [x] Deterministic scoring, runner, Markdown report, and CLI evaluation exist.
 - [x] Current state, Core v1 gaps, vision, and future assistant architecture are documented.
-- [ ] Keep documentation aligned as Core v1 evolves.
+- [x] Synthetic extraction quality fixtures, scoring, runner, Markdown report, and CLI evaluation exist.
+- [ ] Keep documentation aligned as Core evolves.
 
-## Block B: Finish PIE Core v1
+## Block B: Controlled Real Use Of PIE Core
 
-Goal: make PIE Core reliable as a local memory, validation, review, search, and reporting system.
+Goal: validate the current Core workflow with careful local usage before broadening scope.
 
-- [x] Phase 2D: Human-in-the-loop review workflow for `needs_review` entries.
-- [x] Add entries list/show commands.
-- [x] Add local textual search.
-- [x] Add safe reprocessing for existing raw entries.
-- [x] Add weekly reports.
-- [x] Add project-specific reports.
-- [x] Add backup/export command.
+- [x] Capture entries with `pie add`.
+- [x] Inspect entries with `pie entries list` and `pie entries show`.
+- [x] Search entries with `pie search`.
+- [x] Review uncertain entries with `pie review list/show/approve/reject/history`.
+- [x] Reprocess entries safely with per-entry rollback and revisions.
+- [x] Generate daily, weekly, and project reports.
+- [x] Back up and export local data.
+- [ ] Document a recommended real-use workflow.
+- [ ] Identify rough edges from controlled usage.
+- [ ] Polish CLI messages where they affect trust or safety.
+
+See [Current State](current_state.md) and [Core v1 Gap Analysis](core_v1_gap_analysis.md).
+
+## Block C: Finish PIE Core v1
+
+Goal: close the remaining Core gaps without starting the Assistant Layer.
+
+- [ ] Decide whether `pie review edit <id>` is required for Core v1 or can remain deferred.
+- [ ] If implemented, use the existing `structured_entry_revisions` snapshot model.
+- [ ] Improve stale-Markdown guidance after reprocessing or future edits.
 - [ ] Strengthen source citation in every memory-like output.
-- [x] Expand tests for review, search, reprocessing, and reporting.
+- [ ] Keep backup/export and privacy warnings visible.
+- [ ] Add tests for any UX polish or recovery flow changes.
 
-See [Core v1 Gap Analysis](core_v1_gap_analysis.md).
+Design references:
 
-### Phase 2D: Human-In-The-Loop Review
+- [Human Review Design](human_review_design.md)
+- [Review Edit Design](review_edit_design.md)
 
-Design: [Human Review Design](human_review_design.md).
-Edit design: [Review Edit Design](review_edit_design.md).
-
-Planned first implementation:
-
-- [x] `pie review list`
-- [x] `pie review show <id>`
-- [x] `pie review approve <id>`
-- [x] `pie review reject <id>`
-- [x] audit actions for `review_approved` and `review_rejected`
-- [x] keep review local-only with no external actions
-
-Deferred:
-
-- [ ] `pie review edit <id>` using a revision/snapshot model
-- [ ] batch review actions
-- [ ] assistant-assisted review
-
-## Block C: Assistant Foundation
+## Block D: Assistant Foundation
 
 Goal: design the Assistant Layer as a separate interaction layer that uses PIE Core as memory and tooling.
 
@@ -65,7 +61,7 @@ Goal: design the Assistant Layer as a separate interaction layer that uses PIE C
 
 See [Vision](vision.md) and [Assistant Architecture](assistant_architecture.md).
 
-## Block D: Approval Layer
+## Block E: Approval Layer
 
 Goal: require explicit user approval before writes, external actions, or sensitive operations.
 
@@ -76,9 +72,9 @@ Goal: require explicit user approval before writes, external actions, or sensiti
 - [ ] Audit approved actions.
 - [ ] Block prohibited actions by default.
 
-## Block E: External Read-Only Integrations
+## Block F: External Read-Only Integrations
 
-Goal: allow carefully scoped read-only context after Core and approval rules are mature.
+Goal: allow carefully scoped read-only context only after Core and approval rules are mature.
 
 - [ ] Define read-only connector policy.
 - [ ] Start with local files or exports, not live external writes.
@@ -87,7 +83,7 @@ Goal: allow carefully scoped read-only context after Core and approval rules are
 - [ ] Avoid storing unnecessary sensitive content.
 - [ ] Add tests with synthetic data only.
 
-## Block F: Controlled Write Integrations
+## Block G: Controlled Write Integrations
 
 Goal: support write-capable tools only after the Approval Layer is reliable.
 
@@ -97,7 +93,7 @@ Goal: support write-capable tools only after the Approval Layer is reliable.
 - [ ] Provide undo or recovery guidance where possible.
 - [ ] Keep dangerous or irreversible actions out of scope until proven safe.
 
-## Block G: Optional Voice Or Local UI
+## Block H: Optional Voice Or Local UI
 
 Goal: improve interaction only after Core and approval foundations are stable.
 
@@ -114,5 +110,5 @@ Goal: improve interaction only after Core and approval foundations are stable.
 - No fictional character cloning.
 - No cloud-first architecture.
 - No external write integrations before the Approval Layer.
-- No RAG or embeddings before Core v1 search and review are complete.
+- No RAG or embeddings before Core v1 workflows are practical.
 - No dashboard until Core workflows are mature enough to justify it.

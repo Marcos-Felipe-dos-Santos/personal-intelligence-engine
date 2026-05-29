@@ -92,7 +92,7 @@ Output:
 pie report weekly --date 2026-05-26
 ```
 
-Generates a Markdown report of the week containing the specified date (from Monday to Sunday), grouping entries by type and validation status.
+Generates a Markdown report of the local week containing the specified date (Monday to Sunday), grouping entries by type and validation status.
 
 Output:
 ```
@@ -110,7 +110,7 @@ Output:
 pie report project --project PIE
 ```
 
-Generates a Markdown report of all entries associated with the specified project name.
+Generates a Markdown report of entries associated with the exact project name.
 
 Output:
 ```
@@ -120,6 +120,8 @@ Output:
    Entries:      12
    File:         reports/project_PIE.md
 ```
+
+Reports are saved in `reports/`, cite structured/raw source entry IDs, and are ignored by Git.
 
 #### List entries
 

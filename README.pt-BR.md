@@ -92,7 +92,7 @@ Saída:
 pie report weekly --date 2026-05-26
 ```
 
-Gera um relatório Markdown da semana que contém a data especificada (de segunda a domingo), agrupando as entradas por tipo e status de validação.
+Gera um relatório Markdown da semana local que contém a data especificada (de segunda a domingo), agrupando as entradas por tipo e status de validação.
 
 Saída:
 ```
@@ -110,7 +110,7 @@ Saída:
 pie report project --project PIE
 ```
 
-Gera um relatório Markdown com todas as entradas associadas ao projeto especificado.
+Gera um relatório Markdown com entradas associadas ao nome exato do projeto especificado.
 
 Saída:
 ```
@@ -120,6 +120,8 @@ Saída:
    Entries:      12
    File:         reports/project_PIE.md
 ```
+
+Os relatórios são salvos em `reports/`, citam IDs de entradas estruturadas/brutas usadas como fonte e são ignorados pelo Git.
 
 #### Listar entradas
 
