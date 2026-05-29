@@ -43,9 +43,10 @@ def _configure_temp_env(monkeypatch, work_dir: Path) -> None:
     monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "fake")
 
 
-def _add_entry(runner: CliRunner, text: str) -> str:
+def _add_entry(runner: CliRunner, text: str, extra_args: list[str] | None = None) -> str:
     """Add an entry via CLI, return its structured_entry_id."""
-    result = runner.invoke(cli, ["add", text])
+    cmd = ["add", text] + (extra_args or [])
+    result = runner.invoke(cli, cmd)
     assert result.exit_code == 0, f"pie add failed: {result.output}"
     match = re.search(r"Structured ID:\s+([0-9a-f-]+)", result.output)
     assert match is not None, f"Could not parse structured ID from:\n{result.output}"
@@ -57,47 +58,55 @@ def _add_entry(runner: CliRunner, text: str) -> str:
 # ---------------------------------------------------------------------------
 
 SYNTHETIC_ENTRIES = [
-    # (text, expected_type keyword, expected project keyword)
+    # (text, expected_type keyword, expected project keyword, extra CLI args)
     (
         "Projeto: PIE. Tipo: decisão. Texto: Decidi manter SQLite como fonte de verdade. Tags: arquitetura, sqlite",
         "decision",
         "PIE",
+        ["--project", "PIE"],
     ),
     (
         "Projeto: Study Plan. Tipo: tarefa. Texto: Preciso revisar conceitos de SQL no sábado. Tags: estudo, sql",
         "candidate_task",
         "Study Plan",
+        ["--project", "Study Plan"],
     ),
     (
         "Projeto: Health Routine. Tipo: problema. Texto: Estou dormindo tarde por usar celular na cama. Tags: sono, hábito",
         "problem",
         "Health Routine",
+        ["--project", "Health Routine"],
     ),
     (
         "Projeto: Finance Lab. Tipo: ideia. Texto: Criar dashboard local para controle de gastos mensais. Tags: finanças, dashboard",
         "idea",
         "Finance Lab",
+        ["--project", "Finance Lab"],
     ),
     (
         "Projeto: PIE. Tipo: insight. Texto: Percebi que relatórios semanais ajudam na revisão do progresso. Tags: relatórios, processo",
         "insight",
         "PIE",
+        ["--project", "PIE"],
     ),
     (
         "Projeto: Study Plan. Tipo: referência. Texto: Encontrei um artigo sobre normalização de banco de dados. Tags: estudo, referência",
         "reference",
         "Study Plan",
+        ["--project", "Study Plan"],
     ),
     (
         "Projeto: PIE. Tipo: revisão. Texto: A extração classificou uma decisão como ideia em duas entradas. Tags: qualidade, extração",
         "review",
         "PIE",
+        ["--project", "PIE"],
     ),
     # Entry 8: low-confidence (short, no keyword match → general_note, 0.50)
     (
         "Anotação rápida sem contexto",
         "general_note",
         None,
+        [],
     ),
     # Entry 9: low-confidence (long 20+ words, no keyword match → log, 0.50)
     (
@@ -106,6 +115,7 @@ SYNTHETIC_ENTRIES = [
         "as regras de palavras-chave configuradas no sistema",
         "log",
         None,
+        [],
     ),
 ]
 
@@ -153,8 +163,8 @@ class TestFlow2Add:
         runner = CliRunner()
         ids = []
 
-        for text, _expected_type, _expected_project in SYNTHETIC_ENTRIES:
-            sid = _add_entry(runner, text)
+        for text, _expected_type, _expected_project, extra_args in SYNTHETIC_ENTRIES:
+            sid = _add_entry(runner, text, extra_args)
             ids.append(sid)
 
         assert len(ids) == 9
@@ -240,8 +250,8 @@ class TestFlow3Entries:
         _configure_temp_env(monkeypatch, work_dir)
         self.runner = CliRunner()
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
 
     def test_entries_list_shows_all(self):
         result = self.runner.invoke(cli, ["entries", "list"])
@@ -254,16 +264,13 @@ class TestFlow3Entries:
         # Should find the decision entry
         assert "decision" in result.output
 
-    def test_entries_list_filter_by_project_returns_empty_with_fake_extractor(self):
-        """FakeExtractor does not extract project names — project is always None.
-
-        This is expected behavior: the --project filter correctly returns empty
-        because no entries have a project field set.  This is a known limitation
-        of FakeExtractor documented in the simulation report.
-        """
+    def test_entries_list_filter_by_project_finds_entries_with_flag(self):
+        """With --project flags, the project filter now finds entries."""
         result = self.runner.invoke(cli, ["entries", "list", "--project", "PIE"])
         assert result.exit_code == 0
-        assert "No entries found" in result.output
+        # PIE project has 3 entries (entries 0, 4, 6)
+        for sid in [self.ids[0], self.ids[4], self.ids[6]]:
+            assert sid in result.output
 
     def test_entries_show_displays_detail(self):
         result = self.runner.invoke(cli, ["entries", "show", self.ids[0]])
@@ -302,8 +309,8 @@ class TestFlow4Search:
         _configure_temp_env(monkeypatch, work_dir)
         self.runner = CliRunner()
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
 
     def test_search_finds_by_raw_content(self):
         result = self.runner.invoke(cli, ["search", "SQLite"])
@@ -316,16 +323,12 @@ class TestFlow4Search:
         assert result.exit_code == 0
         assert self.ids[2] in result.output
 
-    def test_search_with_project_filter_returns_empty_with_fake_extractor(self):
-        """FakeExtractor does not extract project names — project is always None.
-
-        The --project filter correctly returns no results because structured
-        entries have project=NULL.  The search term 'SQL' matches raw content
-        but the project filter excludes everything.
-        """
+    def test_search_with_project_filter_finds_entries_with_flag(self):
+        """With --project flags, the project filter now finds entries."""
         result = self.runner.invoke(cli, ["search", "SQL", "--project", "Study Plan"])
         assert result.exit_code == 0
-        assert "No search results found" in result.output
+        # Should find the Study Plan entry about SQL
+        assert self.ids[1] in result.output
 
     def test_search_with_type_filter(self):
         result = self.runner.invoke(cli, ["search", "arquitetura", "--type", "decision"])
@@ -364,8 +367,8 @@ class TestFlow5Review:
         self.runner = CliRunner()
         self.work_dir = work_dir
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
 
         # ids[7] = general_note (confidence 0.50) → needs_review
         # ids[8] = log (confidence 0.50) → needs_review
@@ -461,8 +464,8 @@ class TestFlow6Reports:
         self.runner = CliRunner()
         self.work_dir = work_dir
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
         self.today = date.today().isoformat()
 
     def test_daily_report_generates_file(self):
@@ -530,8 +533,8 @@ class TestFlow7BackupExport:
         self.runner = CliRunner()
         self.work_dir = work_dir
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
 
     def test_backup_creates_file_in_temp_dir(self):
         result = self.runner.invoke(cli, ["backup", "create"])
@@ -623,8 +626,8 @@ class TestFlow8Reprocess:
         self.runner = CliRunner()
         self.work_dir = work_dir
         self.ids = []
-        for text, _, _ in SYNTHETIC_ENTRIES:
-            self.ids.append(_add_entry(self.runner, text))
+        for text, _, _, extra_args in SYNTHETIC_ENTRIES:
+            self.ids.append(_add_entry(self.runner, text, extra_args))
 
     def _count_revisions(self) -> int:
         with sqlite3.connect(str(self.work_dir / "pie.db")) as conn:
@@ -806,8 +809,8 @@ class TestIntegratedSmoke:
 
         # 2. Add entries
         ids = []
-        for text, _expected_type, _ in SYNTHETIC_ENTRIES:
-            sid = _add_entry(runner, text)
+        for text, _expected_type, _, extra_args in SYNTHETIC_ENTRIES:
+            sid = _add_entry(runner, text, extra_args)
             ids.append(sid)
         assert len(ids) == 9
 

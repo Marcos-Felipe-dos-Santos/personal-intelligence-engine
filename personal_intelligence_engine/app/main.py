@@ -14,6 +14,7 @@ from personal_intelligence_engine.app.adapters.markdown_writer import MarkdownWr
 from personal_intelligence_engine.app.config import Config
 from personal_intelligence_engine.app.domain.schemas import (
     AuditLogCreate,
+    ExtractionResult,
     RawEntryCreate,
 )
 from personal_intelligence_engine.app.domain.types import (
@@ -21,6 +22,7 @@ from personal_intelligence_engine.app.domain.types import (
     AuditAction,
     AuditStatus,
     EntryStatus,
+    EntryType,
 )
 from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 from personal_intelligence_engine.app.repositories.database import Database
@@ -99,12 +101,23 @@ class PIEApp:
             f"Invalid extractor backend '{self.config.extractor_backend}'. Use 'fake' or 'ollama'."
         )
 
-    def add_entry(self, text: str, source: str = "cli") -> dict:
-        """Full pipeline: ingest → extract → validate → markdown → audit.
+    def add_entry(
+        self,
+        text: str,
+        source: str = "cli",
+        *,
+        project: str | None = None,
+        entry_type: str | None = None,
+        tags: list[str] | None = None,
+    ) -> dict:
+        """Full pipeline: ingest → extract → override → validate → markdown → audit.
 
         Args:
             text: Raw text content.
             source: Source identifier (default: "cli").
+            project: Optional project name override.
+            entry_type: Optional entry type override (must be a valid EntryType value).
+            tags: Optional list of tags to merge with extracted tags.
 
         Returns:
             Dict with entry_id, structured_entry_id, status, note_path.
@@ -145,6 +158,11 @@ class PIEApp:
                 error_message=self._summarize_error(exc, raw_text=text),
             ))
             raise
+
+        # 2b. Apply user-provided overrides (project, entry_type, tags)
+        extraction = self._apply_overrides(
+            extraction, project=project, entry_type=entry_type, tags=tags,
+        )
 
         # Audit: extraction completed
         self.audit.log(AuditLogCreate(
@@ -205,6 +223,7 @@ class PIEApp:
             "entry_id": raw.id,
             "structured_entry_id": structured.id,
             "entry_type": structured.entry_type.value,
+            "project": structured.project,
             "confidence": structured.confidence,
             "validation_status": structured.validation_status.value,
             "note_path": generated.path,
@@ -534,6 +553,54 @@ class PIEApp:
         if isinstance(prompt_version, str) and prompt_version:
             return prompt_version
         return None
+
+    @staticmethod
+    def _apply_overrides(
+        extraction: ExtractionResult,
+        *,
+        project: str | None = None,
+        entry_type: str | None = None,
+        tags: list[str] | None = None,
+    ) -> ExtractionResult:
+        """Apply user-provided overrides to an extraction result.
+
+        - ``project`` replaces the extracted project (if provided).
+        - ``entry_type`` replaces the extracted entry type (if provided).
+        - ``tags`` are merged with extracted tags, preserving order and
+          removing duplicates.
+        - Confidence is **never** changed.
+
+        Args:
+            extraction: The original extraction result.
+            project: Optional project name override.
+            entry_type: Optional entry type name (must be a valid EntryType value).
+            tags: Optional user-supplied tags to merge.
+
+        Returns:
+            A new ExtractionResult with overrides applied.
+        """
+        updates: dict = {}
+
+        if project is not None:
+            updates["project"] = project
+
+        if entry_type is not None:
+            updates["entry_type"] = EntryType(entry_type)
+
+        if tags:
+            seen: set[str] = set()
+            merged: list[str] = []
+            for tag in list(extraction.tags) + list(tags):
+                normalized = tag.strip().lower()
+                if normalized and normalized not in seen:
+                    seen.add(normalized)
+                    merged.append(normalized)
+            updates["tags"] = merged
+
+        if not updates:
+            return extraction
+
+        return extraction.model_copy(update=updates)
 
     @staticmethod
     def _format_review_entry(row: dict) -> dict:

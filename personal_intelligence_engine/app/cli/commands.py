@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from personal_intelligence_engine.app.adapters.fake_extractor import FakeExtractor
 from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractor
 from personal_intelligence_engine.app.config import Config
+from personal_intelligence_engine.app.domain.types import EntryType
 from personal_intelligence_engine.app.evaluation.report import (
     render_extraction_evaluation_report,
     write_extraction_evaluation_report,
@@ -91,23 +92,50 @@ def cli() -> None:
 @cli.command()
 @click.argument("text")
 @click.option("--source", default="cli", help="Source identifier for the entry.")
-def add(text: str, source: str) -> None:
+@click.option("--project", default=None, help="Project name for the entry.")
+@click.option(
+    "--type",
+    "entry_type",
+    default=None,
+    type=click.Choice(
+        [t.value for t in EntryType],
+        case_sensitive=False,
+    ),
+    help="Entry type override (e.g. decision, idea, problem).",
+)
+@click.option(
+    "--tag",
+    "tags",
+    multiple=True,
+    help="Tag to add (can be used multiple times).",
+)
+def add(text: str, source: str, project: str | None, entry_type: str | None, tags: tuple[str, ...]) -> None:
     """Add a new entry to PIE.
 
     TEXT is the raw content to capture.
 
-    Example:
-        pie add "Tive uma ideia para melhorar o pipeline"
+    Examples:\n
+        pie add "Tive uma ideia para melhorar o pipeline"\n
+        pie add "Decidi usar SQLite" --project PIE --type decision\n
+        pie add "Revisar SQL" --tag estudo --tag sql
     """
     app: PIEApp | None = None
     try:
         app = PIEApp()
-        result = app.add_entry(text, source=source)
+        result = app.add_entry(
+            text,
+            source=source,
+            project=project or None,
+            entry_type=entry_type,
+            tags=list(tags) if tags else None,
+        )
 
         click.echo("[OK] Entry created successfully!")
         click.echo(f"   Entry ID:      {result['entry_id']}")
         click.echo(f"   Structured ID: {result['structured_entry_id']}")
         click.echo(f"   Type:          {result['entry_type']}")
+        if result.get("project"):
+            click.echo(f"   Project:       {result['project']}")
         click.echo(f"   Confidence:    {result['confidence']:.0%}")
         click.echo(f"   Validation:    {result['validation_status']}")
         click.echo(f"   Note:          {result['note_path']}")

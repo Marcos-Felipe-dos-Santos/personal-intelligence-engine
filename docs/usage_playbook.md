@@ -25,6 +25,9 @@ pie backup create
 
 ```bash
 pie add "Projeto: PIE. Tipo: decisão. Texto: Usar relatórios semanais para revisar progresso do Core. Tags: pie,relatorios"
+
+# Or using explicit metadata flags:
+pie add "Usar relatórios semanais para revisar progresso do Core" --project PIE --type decision --tag pie --tag relatorios
 ```
 
 3. Review uncertain entries:
@@ -80,6 +83,21 @@ Recommended format:
 ```text
 Projeto: <nome>. Tipo: <decisão/tarefa/problema/ideia/revisão>. Texto: <conteúdo>. Tags: <tags>.
 ```
+
+### Explicit Metadata Flags
+
+Since version 0.1.0, you can also pass explicit flags to set metadata directly. This is useful to override or complement automatic extraction, ensuring 100% precision:
+
+```bash
+pie add "Decidir manter SQLite como fonte de verdade" --project PIE --type decision --tag arquitetura --tag sqlite
+```
+
+Options:
+- `--project <name>`: Associates the entry to a specific project.
+- `--type <type>`: Overrides the extracted type (e.g. `decision`, `idea`, `problem`, `candidate_task`).
+- `--tag <tag>`: Adds tags to the entry (can be specified multiple times; merged and deduplicated case-insensitively).
+
+---
 
 ## What To Record
 
