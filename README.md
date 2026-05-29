@@ -288,6 +288,7 @@ See [docs/roadmap.md](docs/roadmap.md) for the full development plan.
 
 - [Architecture](docs/architecture.md)
 - [Current State](docs/current_state.md)
+- [7-Day Usage Playbook](docs/usage_playbook.md)
 - [Vision](docs/vision.md)
 - [Assistant Architecture](docs/assistant_architecture.md)
 - [Data Model](docs/data_model.md)

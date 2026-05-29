@@ -288,6 +288,7 @@ Veja [docs/roadmap.md](docs/roadmap.md) para o plano completo de desenvolvimento
 
 - [Arquitetura](docs/architecture.md)
 - [Estado Atual](docs/current_state.md)
+- [Guia de Uso de 7 Dias](docs/usage_playbook.md)
 - [Visão](docs/vision.md)
 - [Arquitetura da Assistant Layer](docs/assistant_architecture.md)
 - [Modelo de Dados](docs/data_model.md)
