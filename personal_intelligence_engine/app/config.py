@@ -84,8 +84,12 @@ class Config:
 
     def ensure_dirs(self) -> None:
         """Create output directories if they don't exist."""
+        if self.database_path.parent != self.database_path:
+            self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self.notes_dir.mkdir(parents=True, exist_ok=True)
         self.reports_dir.mkdir(parents=True, exist_ok=True)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.export_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _parse_timeout(value: int | float | str) -> float:
