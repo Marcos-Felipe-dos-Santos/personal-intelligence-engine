@@ -274,7 +274,6 @@ class PIEApp:
             status=AuditStatus.SUCCESS,
         ))
 
-        import json
         entry_ids = json.loads(report.source_entry_ids_json)
 
         return {
@@ -304,7 +303,6 @@ class PIEApp:
             status=AuditStatus.SUCCESS,
         ))
 
-        import json
         entry_ids = json.loads(report.source_entry_ids_json)
 
         return {
@@ -335,7 +333,6 @@ class PIEApp:
             status=AuditStatus.SUCCESS,
         ))
 
-        import json
         entry_ids = json.loads(report.source_entry_ids_json)
 
         return {
