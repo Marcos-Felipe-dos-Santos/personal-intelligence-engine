@@ -705,15 +705,16 @@ class TestFlow8Reprocess:
         # Should have at least one extraction_completed from reprocess
         assert actions.count("extraction_completed") >= 2  # initial + reprocess
 
-    def test_reprocess_warns_about_stale_markdown(self):
+    def test_reprocess_no_longer_warns_about_stale_markdown(self):
         sid = self.ids[0]
         result = self.runner.invoke(cli, ["entries", "reprocess", sid])
 
         assert result.exit_code == 0
-        assert "notas Markdown" in result.output or "notes/" in result.output.lower() or "não foram regeneradas" in result.output
+        assert "não foram regeneradas" not in result.output
+        assert "notas Markdown" not in result.output
 
-    def test_reprocess_does_not_regenerate_markdown(self):
-        """Markdown notes directory should not gain new files after reprocess."""
+    def test_reprocess_keeps_same_markdown_note_path(self):
+        """Markdown regeneration should update the existing note path."""
         notes_dir = self.work_dir / "notes"
         notes_before = set(notes_dir.glob("*.md")) if notes_dir.exists() else set()
 

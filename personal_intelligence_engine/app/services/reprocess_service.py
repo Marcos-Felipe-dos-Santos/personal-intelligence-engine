@@ -22,6 +22,7 @@ from personal_intelligence_engine.app.repositories.entries_repository import Ent
 from personal_intelligence_engine.app.repositories.revisions_repository import RevisionsRepository
 from personal_intelligence_engine.app.services.audit_service import AuditService
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService, Extractor
+from personal_intelligence_engine.app.services.markdown_service import MarkdownService
 
 
 class ReprocessService:
@@ -35,6 +36,7 @@ class ReprocessService:
         revisions_repo: RevisionsRepository,
         extraction: ExtractionService,
         audit: AuditService,
+        markdown_service: MarkdownService,
         extractor: Extractor,
     ) -> None:
         self.config = config
@@ -43,6 +45,7 @@ class ReprocessService:
         self.revisions_repo = revisions_repo
         self.extraction = extraction
         self.audit = audit
+        self.markdown_service = markdown_service
         self.extractor = extractor
 
     def reprocess_entry(self, structured_entry_id: str, dry_run: bool = True) -> dict[str, Any]:
@@ -204,6 +207,13 @@ class ReprocessService:
                         f"threshold {LOW_CONFIDENCE_THRESHOLD}"
                     ),
                 ))
+
+        updated_structured_entry = self.entries_repo.get_structured_entry(structured_entry_id)
+        if updated_structured_entry is None:
+            raise RuntimeError(
+                f"Reprocessed structured entry '{structured_entry_id}' could not be reloaded."
+            )
+        self.markdown_service.generate_note(updated_structured_entry, raw_content)
 
         return {
             "structured_entry_id": structured_entry_id,

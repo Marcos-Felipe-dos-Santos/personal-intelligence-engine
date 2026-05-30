@@ -8,8 +8,10 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from personal_intelligence_engine.app.cli.commands import cli
+from personal_intelligence_engine.app.config import Config
 from personal_intelligence_engine.app.domain.schemas import ExtractionResult
 from personal_intelligence_engine.app.domain.types import LOW_CONFIDENCE_THRESHOLD, EntryType
+from personal_intelligence_engine.app.main import PIEApp
 from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 
 
@@ -623,14 +625,13 @@ def test_reprocess_service_does_not_duplicate_threshold_literal():
     assert "0.70" not in source
 
 
-def test_reprocess_does_not_regenerate_markdown(monkeypatch, work_dir):
+def test_reprocess_dry_run_does_not_regenerate_markdown(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
 
-
-    # Find the note path
     note_dir = work_dir / "notes"
     note_files_before = set(note_dir.glob("*.md"))
+    note_content_before = {path: path.read_text(encoding="utf-8") for path in note_files_before}
 
     # Mock extract to change entry
     def mock_extract(self, content):
@@ -646,11 +647,54 @@ def test_reprocess_does_not_regenerate_markdown(monkeypatch, work_dir):
         mock_extract
     )
 
-    CliRunner().invoke(cli, ["entries", "reprocess", structured_id])
+    result = CliRunner().invoke(cli, ["entries", "reprocess", structured_id, "--dry-run"])
+    assert result.exit_code == 0, result.output
 
     note_files_after = set(note_dir.glob("*.md"))
-    # Verify no new markdown file was created, nor files modified
+    note_content_after = {path: path.read_text(encoding="utf-8") for path in note_files_after}
+
     assert note_files_before == note_files_after
+    assert note_content_before == note_content_after
+
+
+def test_reprocess_apply_regenerates_markdown_note(monkeypatch, work_dir):
+    config = Config(
+        database_path=work_dir / "pie.db",
+        notes_dir=work_dir / "notes",
+        reports_dir=work_dir / "reports",
+        backup_dir=work_dir / "backups",
+        export_dir=work_dir / "exports",
+        migrations_dir=Path(__file__).resolve().parent.parent / "migrations",
+        extractor_backend="fake",
+    )
+    app = PIEApp(config)
+    try:
+        result = app.add_entry("Eu decidi usar SQLite", auto_approve=True)
+        note_path = Path(result["note_path"])
+        before = note_path.read_text(encoding="utf-8")
+
+        def mock_extract(self, content):
+            return ExtractionResult(
+                entry_type=EntryType.IDEA,
+                summary="Regenerated markdown summary",
+                confidence=0.90,
+                tags=["regenerated"],
+            )
+
+        monkeypatch.setattr(
+            "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+            mock_extract,
+        )
+
+        app.reprocess_entry(result["structured_entry_id"], dry_run=False)
+
+        after = note_path.read_text(encoding="utf-8")
+    finally:
+        app.close()
+
+    assert before != after
+    assert "Regenerated markdown summary" in after
+    assert "`regenerated`" in after
 
 
 def test_regression_pie_add_works(monkeypatch, work_dir):

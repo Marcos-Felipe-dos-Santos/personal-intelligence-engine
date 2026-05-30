@@ -734,7 +734,6 @@ def entries_reprocess(
                 click.echo("[WARNING] Reprocessamento concluido com falhas parciais.")
             else:
                 click.echo("[OK] Reprocessamento aplicado com sucesso!")
-            click.echo("[WARNING] As notas Markdown em 'notes/' não foram regeneradas automaticamente e podem estar desatualizadas.")
 
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc

@@ -81,6 +81,7 @@ class PIEApp:
             self.revisions_repo,
             self.extraction,
             self.audit,
+            self.markdown,
             self.extractor,
         )
 
