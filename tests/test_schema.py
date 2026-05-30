@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from personal_intelligence_engine.app.domain.schemas import (
     ExtractionResult,
+    RawEntry,
     RawEntryCreate,
     Report,
     StructuredEntryCreate,
@@ -35,6 +36,25 @@ class TestRawEntryCreate:
     def test_default_source(self):
         entry = RawEntryCreate(content="Test")
         assert entry.source == "cli"
+
+
+class TestRawEntry:
+    """Tests for persisted RawEntry schema."""
+
+    def test_empty_content_hash_is_valid(self):
+        entry = RawEntry(content="x", source="cli", content_hash="")
+        assert entry.content_hash == ""
+
+    def test_sixty_four_character_content_hash_is_valid(self):
+        entry = RawEntry(content="x", source="cli", content_hash="a" * 64)
+        assert entry.content_hash == "a" * 64
+
+    def test_short_content_hash_is_rejected(self):
+        with pytest.raises(
+            ValidationError,
+            match="content_hash must be exactly 64 hex characters",
+        ):
+            RawEntry(content="x", source="cli", content_hash="short")
 
 
 class TestStructuredEntryCreate:

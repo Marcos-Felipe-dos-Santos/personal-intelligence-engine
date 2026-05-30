@@ -87,7 +87,7 @@ class RawEntry(BaseModel):
     created_at: str = Field(default_factory=_utc_now)
     updated_at: str = Field(default_factory=_utc_now)
     metadata_json: str | None = None
-    content_hash: str = ""
+    content_hash: str = Field(default="", min_length=0)
 
     @field_validator("content")
     @classmethod
@@ -100,6 +100,13 @@ class RawEntry(BaseModel):
     @classmethod
     def validate_metadata_json(cls, v: str | None) -> str | None:
         return _validate_json_string(v, "metadata_json")
+
+    @field_validator("content_hash")
+    @classmethod
+    def validate_content_hash(cls, v: str) -> str:
+        if v and len(v) != 64:
+            raise ValueError("content_hash must be exactly 64 hex characters")
+        return v
 
 
 # ---------------------------------------------------------------------------
