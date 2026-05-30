@@ -57,6 +57,24 @@ class TestFakeExtractor:
             result = extractor.extract(text)
             assert result.entry_type == EntryType.CANDIDATE_TASK
 
+    @pytest.mark.parametrize(
+        ("text", "entry_type"),
+        [
+            ("I decided to use SQLite for local storage", EntryType.DECISION),
+            ("I had an idea for the extraction pipeline", EntryType.IDEA),
+            ("There is a problem with the migration test", EntryType.PROBLEM),
+            ("I need to review the schema tomorrow", EntryType.CANDIDATE_TASK),
+            ("I noticed the report could mention raw IDs", EntryType.INSIGHT),
+            ("Save this reference article for SQLite constraints", EntryType.REFERENCE),
+            ("Weekly review of synthetic extraction quality", EntryType.REVIEW),
+        ],
+    )
+    def test_english_keywords(self, extractor, text, entry_type):
+        result = extractor.extract(text)
+
+        assert result.entry_type == entry_type
+        assert result.confidence >= 0.55
+
     def test_fallback_general_note(self, extractor):
         """Short unmatched text falls back to general_note."""
         result = extractor.extract("Olá mundo")
