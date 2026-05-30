@@ -16,10 +16,13 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 
 ## Available Commands
 
-- `pie add "text"` captures a raw entry, extracts structured data, validates it, writes a Markdown note, and records audit events.
-- `pie doctor` checks the configured extractor backend without creating entries.
+- `pie add "text"` captures a raw entry, extracts structured data, validates it, writes a Markdown note, and records audit events. Supports `--auto-approve` to bypass review.
+- `pie doctor` checks the configured extractor backend and lists pending and applied migrations. Supports `--deep` to perform a test extraction.
 - `pie entries list` lists structured entries with optional filters.
 - `pie entries show <structured_entry_id>` shows details for one structured entry.
+- `pie entries delete <structured_entry_id>` soft-deletes a structured entry and its raw entry.
+- `pie entries restore <structured_entry_id>` restores a soft-deleted entry.
+- `pie entries purge` permanently deletes soft-deleted entries older than N days (default 30).
 - `pie entries reprocess <structured_entry_id> --dry-run` previews reprocessing changes.
 - `pie entries reprocess <structured_entry_id>` applies safe reprocessing for one entry.
 - `pie entries reprocess --status <status> --dry-run` previews batch reprocessing by status.
@@ -56,6 +59,8 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - `001_initial_schema.sql`: creates the initial SQLite schema, including raw entries, structured entries, audit logs, generated files, and reports.
 - `002_add_review_audit_actions.sql`: adds audit action support for human review actions.
 - `003_create_structured_entry_revisions.sql`: adds `structured_entry_revisions` for before/after structured snapshots.
+- `004_add_soft_delete.sql`: adds `deleted_at` columns to `raw_entries` and `structured_entries` for soft-deletion.
+- `005_add_delete_audit_actions.sql`: adds `entry_deleted`, `entry_restored`, and `entries_purged` actions to `audit_logs` check constraint.
 
 ## Implemented Functionality
 

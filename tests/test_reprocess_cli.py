@@ -21,8 +21,11 @@ def _configure_temp_env(monkeypatch, work_dir) -> None:
     monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "fake")
 
 
-def _add_entry(text: str) -> str:
-    result = CliRunner().invoke(cli, ["add", text])
+def _add_entry(text: str, auto_approve: bool = False) -> str:
+    args = ["add", text]
+    if auto_approve:
+        args.append("--auto-approve")
+    result = CliRunner().invoke(cli, args)
     assert result.exit_code == 0, result.output
 
     match = re.search(r"Structured ID:\s+([0-9a-f-]+)", result.output)
@@ -42,7 +45,8 @@ def _raw_entry_id_for_structured_entry(db_path, structured_id: str) -> str:
 
 def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     # Mock the extractor to return a different result
     def mock_extract(self, content):
@@ -72,7 +76,7 @@ def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
         conn.row_factory = sqlite3.Row
         row = conn.execute("SELECT * FROM structured_entries WHERE id = ?;", (structured_id,)).fetchone()
         assert row["entry_type"] == "decision"  # Stays decision
-        assert row["confidence"] == 0.85
+        assert row["confidence"] == 0.60
 
         revisions = conn.execute("SELECT COUNT(*) FROM structured_entry_revisions;").fetchone()[0]
         assert revisions == 0
@@ -83,7 +87,8 @@ def test_reprocess_dry_run_does_not_alter_db(monkeypatch, work_dir):
 
 def test_reprocess_dry_run_displays_comparison(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -103,12 +108,13 @@ def test_reprocess_dry_run_displays_comparison(monkeypatch, work_dir):
     assert "Structured Entry ID: " in result.output
     assert "Entry Type: 'decision' -> 'idea'" in result.output
     assert "Summary: " in result.output
-    assert "Confidence: 85% -> 99%" in result.output
+    assert "Confidence: 60% -> 99%" in result.output
 
 
 def test_reprocess_applies_new_version(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -139,7 +145,8 @@ def test_reprocess_applies_new_version(monkeypatch, work_dir):
 def test_reprocess_preserves_raw_entries_content(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     raw_text = "Eu decidi usar SQLite para o projeto"
-    structured_id = _add_entry(raw_text)
+    structured_id = _add_entry(raw_text, auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -165,7 +172,8 @@ def test_reprocess_preserves_raw_entries_content(monkeypatch, work_dir):
 
 def test_reprocess_creates_revision(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -207,7 +215,8 @@ def test_reprocess_creates_revision(monkeypatch, work_dir):
 
 def test_reprocess_creates_audit_log(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     # Clear prior audit logs to make counting simple
     with sqlite3.connect(work_dir / "pie.db") as conn:
@@ -226,7 +235,8 @@ def test_reprocess_creates_audit_log(monkeypatch, work_dir):
 def test_reprocess_rolls_back_if_structured_update_fails(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     raw_text = "Eu decidi usar SQLite"
-    structured_id = _add_entry(raw_text)
+    structured_id = _add_entry(raw_text, auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -283,7 +293,8 @@ def test_reprocess_rolls_back_if_structured_update_fails(monkeypatch, work_dir):
 def test_reprocess_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     raw_text = "Eu decidi usar SQLite"
-    structured_id = _add_entry(raw_text)
+    structured_id = _add_entry(raw_text, auto_approve=True)
+
 
     def mock_extract(self, content):
         return ExtractionResult(
@@ -338,7 +349,8 @@ def test_reprocess_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
 
 def test_reprocess_missing_id_returns_error(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    _add_entry("Eu decidi usar SQLite")
+    _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     result = CliRunner().invoke(cli, ["entries", "reprocess", "non-existent-id"])
     assert result.exit_code != 0
@@ -347,10 +359,11 @@ def test_reprocess_missing_id_returns_error(monkeypatch, work_dir):
 
 def test_reprocess_by_status_selects_correct_entries(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    # FakeExtractor unclassified fallback gives confidence 0.50 (needs_review)
+    # FakeExtractor unclassified fallback gives confidence 0.30 (needs_review)
     needs_review_id = _add_entry("Nota sem palavras chave e com confianca baixa")
-    # Exact keyword match gives confidence 0.85 (processed)
-    valid_id = _add_entry("Eu decidi usar SQLite")
+    # Exact keyword match gives confidence 0.60 -> can be auto-approved
+    valid_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     # Verify initial states
     with sqlite3.connect(work_dir / "pie.db") as conn:
@@ -390,9 +403,9 @@ def test_reprocess_by_status_selects_correct_entries(monkeypatch, work_dir):
         assert nr_entry["validation_status"] == "valid"
         assert nr_entry["confidence"] == 0.95
 
-        # The valid entry should not have changed (confidence remains 0.85)
+        # The valid entry should not have changed (confidence remains 0.60)
         v_entry = conn.execute("SELECT * FROM structured_entries WHERE id = ?;", (valid_id,)).fetchone()
-        assert v_entry["confidence"] == 0.85
+        assert v_entry["confidence"] == 0.60
 
 
 def test_reprocess_by_status_reports_partial_failure(monkeypatch, work_dir):
@@ -536,16 +549,18 @@ def test_reprocess_by_status_rejects_invalid_limit(monkeypatch, work_dir):
 def test_reprocess_by_status_empty_message(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     # Add a valid entry only
-    _add_entry("Eu decidi usar SQLite")
+    _add_entry("Eu decidi usar SQLite", auto_approve=True)
 
     result = CliRunner().invoke(cli, ["entries", "reprocess", "--status", "needs_review"])
     assert result.exit_code == 0
     assert "Nenhuma entrada encontrada" in result.output
 
 
+
 def test_reprocess_low_confidence_gets_needs_review(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite") # originally valid (0.85)
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True) # originally valid (0.60)
+
 
     # Mock extract to return low confidence (0.45)
     def mock_extract(self, content):
@@ -574,7 +589,8 @@ def test_reprocess_low_confidence_gets_needs_review(monkeypatch, work_dir):
 
 def test_reprocess_does_not_regenerate_markdown(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     # Find the note path
     note_dir = work_dir / "notes"
@@ -610,7 +626,8 @@ def test_regression_pie_add_works(monkeypatch, work_dir):
 
 def test_regression_cli_commands(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite")
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+
 
     # 1. entries list
     res_list = CliRunner().invoke(cli, ["entries", "list"])

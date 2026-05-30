@@ -26,9 +26,9 @@ Goal: validate the current Core workflow with careful local usage before broaden
 - [x] Reprocess entries safely with per-entry rollback and revisions.
 - [x] Generate daily, weekly, and project reports.
 - [x] Back up and export local data.
-- [ ] Document a recommended real-use workflow.
-- [ ] Identify rough edges from controlled usage.
-- [ ] Polish CLI messages where they affect trust or safety.
+- [ ] Document a recommended real-use workflow (capturing a week of logs, reviewing, running weekly reports, exporting backups).
+- [ ] Identify rough edges from controlled usage (CLI navigation speed, review batch approving, formatting inconsistencies).
+- [ ] Polish CLI messages where they affect trust or safety (explicit warning when database migration is pending, clear confidence explanation, database path verification).
 
 See [Current State](current_state.md) and [Core v1 Gap Analysis](core_v1_gap_analysis.md).
 
@@ -36,6 +36,10 @@ See [Current State](current_state.md) and [Core v1 Gap Analysis](core_v1_gap_ana
 
 Goal: close the remaining Core gaps without starting the Assistant Layer.
 
+- [x] Implement entry-level data deletion (soft-delete, restore, and purge) to preserve user control over local data.
+- [x] Recalibrate FakeExtractor confidence scores (0.60 match, 0.30 fallback) to avoid artificial high certainty, and add support for `--auto-approve` to bypass review.
+- [x] Implement explicit migration logging, pending/applied migration introspection, post-execution schema verification, and `pie doctor` status reporting.
+- [x] Integrate local Ollama deep health check (`pie doctor --deep`) using a synthetic test extraction and validation of response quality.
 - [ ] Decide whether `pie review edit <id>` is required for Core v1 or can remain deferred.
 - [ ] If implemented, use the existing `structured_entry_revisions` snapshot model.
 - [ ] Improve stale-Markdown guidance after reprocessing or future edits.

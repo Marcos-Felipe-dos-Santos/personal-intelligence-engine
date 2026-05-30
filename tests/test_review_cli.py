@@ -15,8 +15,11 @@ def _configure_temp_env(monkeypatch, work_dir) -> None:
     monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "fake")
 
 
-def _add_entry(text: str) -> str:
-    result = CliRunner().invoke(cli, ["add", text])
+def _add_entry(text: str, auto_approve: bool = False) -> str:
+    args = ["add", text]
+    if auto_approve:
+        args.append("--auto-approve")
+    result = CliRunner().invoke(cli, args)
     assert result.exit_code == 0, result.output
 
     match = re.search(r"Structured ID:\s+([0-9a-f-]+)", result.output)
@@ -99,13 +102,13 @@ def test_review_list_shows_needs_review_entry(monkeypatch, work_dir):
     assert "Entries needing review" in result.output
     assert structured_id in result.output
     assert "general_note" in result.output
-    assert "50%" in result.output
+    assert "30%" in result.output
     assert "Nota sintetica sem projeto claro" in result.output
 
 
 def test_review_list_does_not_show_processed_entry(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    processed_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    processed_id = _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
     needs_review_id = _add_entry("Nota sintetica sem projeto claro")
 
     result = CliRunner().invoke(cli, ["review", "list"])
@@ -117,7 +120,7 @@ def test_review_list_does_not_show_processed_entry(monkeypatch, work_dir):
 
 def test_review_list_without_results_shows_friendly_message(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
 
     result = CliRunner().invoke(cli, ["review", "list"])
 
@@ -139,7 +142,7 @@ def test_review_show_displays_entry_details(monkeypatch, work_dir):
     assert "Project:" in result.output
     assert "Summary:" in result.output
     assert "Confidence:" in result.output
-    assert "50%" in result.output
+    assert "30%" in result.output
     assert "Tags:" in result.output
     assert "unclassified" in result.output
     assert "Validation Status:" in result.output
@@ -246,7 +249,7 @@ def test_review_approve_missing_id_returns_friendly_error(monkeypatch, work_dir)
 
 def test_review_approve_already_processed_entry_is_idempotent(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    structured_id = _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
     raw_entry_id = _fetch_review_state(work_dir / "pie.db", structured_id)["raw_entry_id"]
     before_counts = _fetch_counts(work_dir / "pie.db")
 
@@ -360,7 +363,7 @@ def test_review_reject_missing_id_returns_friendly_error(monkeypatch, work_dir):
 
 def test_review_reject_already_processed_entry_is_idempotent(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    structured_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    structured_id = _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
     raw_entry_id = _fetch_review_state(work_dir / "pie.db", structured_id)["raw_entry_id"]
     before_counts = _fetch_counts(work_dir / "pie.db")
 

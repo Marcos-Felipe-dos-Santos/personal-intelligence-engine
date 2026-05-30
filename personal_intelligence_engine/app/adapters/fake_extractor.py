@@ -3,6 +3,10 @@
 This adapter uses simple keyword rules to classify text into entry types.
 It is designed to be swapped for a real LLM extractor in future phases
 without modifying the service layer.
+
+IMPORTANT: Confidence values from FakeExtractor are NOT calibrated for
+semantic accuracy. They reflect only keyword-match specificity and should
+not be compared directly with LLM-based extractor confidence scores.
 """
 
 from __future__ import annotations
@@ -26,20 +30,21 @@ class FakeExtractor:
         - "revisão", "review" → review
         - Otherwise → general_note (short text) or log (longer text)
 
-    Confidence is set based on how specific the match is:
-        - Exact keyword match → 0.85
-        - Fallback → 0.50 (triggers needs_review)
+    Confidence reflects keyword-match specificity, NOT semantic certainty:
+        - Exact keyword match → 0.60 (above fallback, below review threshold)
+        - Reference/review keywords → 0.55 (less specific patterns)
+        - Fallback → 0.30 (clearly uncertain, triggers needs_review)
     """
 
     # Ordered list of (pattern, entry_type, confidence)
     _RULES: list[tuple[str, EntryType, float]] = [
-        (r"\bdecidi\b", EntryType.DECISION, 0.85),
-        (r"\bideia\b", EntryType.IDEA, 0.85),
-        (r"\b(?:problema|erro|bloqueio)\b", EntryType.PROBLEM, 0.85),
-        (r"\b(?:tarefa|preciso|fazer)\b", EntryType.CANDIDATE_TASK, 0.85),
-        (r"\b(?:insight|percebi|descobri)\b", EntryType.INSIGHT, 0.85),
-        (r"\b(?:referência|link|artigo)\b", EntryType.REFERENCE, 0.80),
-        (r"\b(?:revisão|review)\b", EntryType.REVIEW, 0.80),
+        (r"\bdecidi\b", EntryType.DECISION, 0.60),
+        (r"\bideia\b", EntryType.IDEA, 0.60),
+        (r"\b(?:problema|erro|bloqueio)\b", EntryType.PROBLEM, 0.60),
+        (r"\b(?:tarefa|preciso|fazer)\b", EntryType.CANDIDATE_TASK, 0.60),
+        (r"\b(?:insight|percebi|descobri)\b", EntryType.INSIGHT, 0.60),
+        (r"\b(?:referência|link|artigo)\b", EntryType.REFERENCE, 0.55),
+        (r"\b(?:revisão|review)\b", EntryType.REVIEW, 0.55),
     ]
 
     def extract(self, content: str) -> ExtractionResult:
@@ -60,6 +65,11 @@ class FakeExtractor:
                     summary=self._make_summary(content),
                     confidence=confidence,
                     tags=self._extract_tags(lower, entry_type),
+                    extra={
+                        "extractor": "FakeExtractor",
+                        "confidence_note": "Deterministic keyword match — not calibrated for semantic accuracy.",
+                        "match_rule": pattern,
+                    },
                 )
 
         # Fallback: short texts are general_note, longer texts are log
@@ -67,8 +77,13 @@ class FakeExtractor:
         return ExtractionResult(
             entry_type=EntryType.GENERAL_NOTE if is_short else EntryType.LOG,
             summary=self._make_summary(content),
-            confidence=0.50,
+            confidence=0.30,
             tags=["unclassified"],
+            extra={
+                "extractor": "FakeExtractor",
+                "confidence_note": "Deterministic keyword match — not calibrated for semantic accuracy.",
+                "match_rule": "fallback",
+            },
         )
 
     @staticmethod

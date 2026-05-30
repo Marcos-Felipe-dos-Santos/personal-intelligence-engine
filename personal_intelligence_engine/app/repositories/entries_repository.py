@@ -97,15 +97,15 @@ class EntriesRepository:
         return StructuredEntry(**dict(row))
 
     def get_structured_entries_by_date(self, date_str: str) -> list[StructuredEntry]:
-        """Fetch all structured entries created on a given date (YYYY-MM-DD)."""
+        """Fetch all non-deleted structured entries created on a given date (YYYY-MM-DD)."""
         rows = self._db.fetchall(
-            "SELECT * FROM structured_entries WHERE created_at LIKE ? ORDER BY created_at;",
+            "SELECT * FROM structured_entries WHERE created_at LIKE ? AND deleted_at IS NULL ORDER BY created_at;",
             (f"{date_str}%",),
         )
         return [StructuredEntry(**dict(row)) for row in rows]
 
     def list_entries_needing_review(self) -> list[dict]:
-        """Fetch structured entries whose raw entry is marked as needs_review."""
+        """Fetch non-deleted structured entries whose raw entry is marked as needs_review."""
         rows = self._db.fetchall(
             """
             SELECT
@@ -123,6 +123,8 @@ class EntriesRepository:
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
             WHERE r.status = 'needs_review'
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL
             ORDER BY s.created_at;
             """
         )
@@ -146,7 +148,9 @@ class EntriesRepository:
                 r.status AS raw_status
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
-            WHERE s.id = ? AND r.status = 'needs_review';
+            WHERE s.id = ? AND r.status = 'needs_review'
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL;
             """,
             (structured_entry_id,),
         )
@@ -227,8 +231,8 @@ class EntriesRepository:
         validation_status: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        """List structured entries with optional filters."""
-        clauses: list[str] = []
+        """List non-deleted structured entries with optional filters."""
+        clauses: list[str] = ["s.deleted_at IS NULL", "r.deleted_at IS NULL"]
         params: list[str | int] = []
 
         if entry_type is not None:
@@ -241,9 +245,7 @@ class EntriesRepository:
             clauses.append("s.validation_status = ?")
             params.append(validation_status)
 
-        where = ""
-        if clauses:
-            where = "WHERE " + " AND ".join(clauses)
+        where = "WHERE " + " AND ".join(clauses)
 
         sql = f"""
             SELECT
@@ -284,7 +286,9 @@ class EntriesRepository:
                 r.content         AS raw_content
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
-            WHERE s.id = ?;
+            WHERE s.id = ?
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL;
             """,
             (structured_entry_id,),
         )
@@ -301,10 +305,12 @@ class EntriesRepository:
         validation_status: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        """Search entries by text across raw content, summary, project, and structured_json."""
+        """Search non-deleted entries by text across raw content, summary, project, and structured_json."""
         like_pattern = f"%{query}%"
         clauses = [
-            "(r.content LIKE ? OR s.summary LIKE ? OR s.project LIKE ? OR s.structured_json LIKE ?)"
+            "(r.content LIKE ? OR s.summary LIKE ? OR s.project LIKE ? OR s.structured_json LIKE ?)",
+            "s.deleted_at IS NULL",
+            "r.deleted_at IS NULL",
         ]
         params: list[str | int] = [like_pattern, like_pattern, like_pattern, like_pattern]
 
@@ -401,13 +407,15 @@ class EntriesRepository:
         self._db.commit()
 
     def list_entries_by_status(self, status: str, limit: int) -> list[str]:
-        """Fetch structured entry IDs where validation_status or raw status matches."""
+        """Fetch non-deleted structured entry IDs where validation_status or raw status matches."""
         rows = self._db.fetchall(
             """
             SELECT s.id
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
-            WHERE s.validation_status = ? OR r.status = ?
+            WHERE (s.validation_status = ? OR r.status = ?)
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL
             ORDER BY s.created_at DESC
             LIMIT ?;
             """,
@@ -416,9 +424,122 @@ class EntriesRepository:
         return [row["id"] for row in rows]
 
     def get_structured_entries_by_project(self, project: str) -> list[StructuredEntry]:
-        """Fetch all structured entries for a specific project."""
+        """Fetch all non-deleted structured entries for a specific project."""
         rows = self._db.fetchall(
-            "SELECT * FROM structured_entries WHERE project = ? ORDER BY created_at DESC;",
+            "SELECT * FROM structured_entries WHERE project = ? AND deleted_at IS NULL ORDER BY created_at DESC;",
             (project,),
         )
         return [StructuredEntry(**dict(row)) for row in rows]
+
+    # --- Soft Delete / Restore / Purge ---
+
+    def soft_delete_entry(self, structured_entry_id: str, deleted_at: str) -> str | None:
+        """Soft-delete a structured entry and its linked raw entry.
+
+        Returns the raw_entry_id if the entry was found, otherwise None.
+        """
+        row = self._db.fetchone(
+            "SELECT raw_entry_id FROM structured_entries WHERE id = ? AND deleted_at IS NULL;",
+            (structured_entry_id,),
+        )
+        if row is None:
+            return None
+
+        raw_entry_id = row["raw_entry_id"]
+
+        self._db.execute(
+            "UPDATE structured_entries SET deleted_at = ? WHERE id = ?;",
+            (deleted_at, structured_entry_id),
+        )
+        self._db.execute(
+            "UPDATE raw_entries SET deleted_at = ? WHERE id = ?;",
+            (deleted_at, raw_entry_id),
+        )
+        self._db.commit()
+        return raw_entry_id
+
+    def restore_entry(self, structured_entry_id: str) -> str | None:
+        """Restore a soft-deleted structured entry and its linked raw entry.
+
+        Returns the raw_entry_id if the entry was found, otherwise None.
+        """
+        row = self._db.fetchone(
+            "SELECT raw_entry_id FROM structured_entries WHERE id = ? AND deleted_at IS NOT NULL;",
+            (structured_entry_id,),
+        )
+        if row is None:
+            return None
+
+        raw_entry_id = row["raw_entry_id"]
+
+        self._db.execute(
+            "UPDATE structured_entries SET deleted_at = NULL WHERE id = ?;",
+            (structured_entry_id,),
+        )
+        self._db.execute(
+            "UPDATE raw_entries SET deleted_at = NULL WHERE id = ?;",
+            (raw_entry_id,),
+        )
+        self._db.commit()
+        return raw_entry_id
+
+    def purge_deleted_entries(self, before_date: str) -> int:
+        """Permanently delete entries that were soft-deleted before the given date.
+
+        Deletes structured_entries, then raw_entries (respecting FK order).
+        Returns the number of raw entries purged.
+        """
+        # Find raw entry IDs to purge
+        rows = self._db.fetchall(
+            """
+            SELECT DISTINCT r.id
+            FROM raw_entries r
+            WHERE r.deleted_at IS NOT NULL
+              AND r.deleted_at < ?;
+            """,
+            (before_date,),
+        )
+        raw_ids = [row["id"] for row in rows]
+
+        if not raw_ids:
+            return 0
+
+        placeholders = ",".join("?" for _ in raw_ids)
+
+        # Delete structured_entry_revisions that reference these structured entries
+        self._db.execute(
+            f"""
+            DELETE FROM structured_entry_revisions
+            WHERE structured_entry_id IN (
+                SELECT id FROM structured_entries WHERE raw_entry_id IN ({placeholders})
+            );
+            """,
+            tuple(raw_ids),
+        )
+
+        # Delete generated files
+        self._db.execute(
+            f"DELETE FROM generated_files WHERE raw_entry_id IN ({placeholders});",
+            tuple(raw_ids),
+        )
+
+        # Orphan audit logs (set raw_entry_id to NULL to prevent FK violation)
+        self._db.execute(
+            f"UPDATE audit_logs SET raw_entry_id = NULL WHERE raw_entry_id IN ({placeholders});",
+            tuple(raw_ids),
+        )
+
+        # Delete structured entries
+        self._db.execute(
+            f"DELETE FROM structured_entries WHERE raw_entry_id IN ({placeholders});",
+            tuple(raw_ids),
+        )
+
+        # Delete raw entries
+        self._db.execute(
+            f"DELETE FROM raw_entries WHERE id IN ({placeholders});",
+            tuple(raw_ids),
+        )
+
+        self._db.commit()
+        return len(raw_ids)

@@ -29,7 +29,8 @@ class TestFakeExtractor:
         """Text containing 'decidi' is classified as decision."""
         result = extractor.extract("Eu decidi usar SQLite para o projeto")
         assert result.entry_type == EntryType.DECISION
-        assert result.confidence >= 0.70
+        assert result.confidence == 0.60
+
 
     def test_idea_keyword(self, extractor):
         """Text containing 'ideia' is classified as idea."""

@@ -109,7 +109,19 @@ def cli() -> None:
     multiple=True,
     help="Tag to add (can be used multiple times).",
 )
-def add(text: str, source: str, project: str | None, entry_type: str | None, tags: tuple[str, ...]) -> None:
+@click.option(
+    "--auto-approve",
+    is_flag=True,
+    help="Skip needs_review status for low-confidence entries.",
+)
+def add(
+    text: str,
+    source: str,
+    project: str | None,
+    entry_type: str | None,
+    tags: tuple[str, ...],
+    auto_approve: bool,
+) -> None:
     """Add a new entry to PIE.
 
     TEXT is the raw content to capture.
@@ -128,6 +140,7 @@ def add(text: str, source: str, project: str | None, entry_type: str | None, tag
             project=project or None,
             entry_type=entry_type,
             tags=list(tags) if tags else None,
+            auto_approve=auto_approve,
         )
 
         click.echo("[OK] Entry created successfully!")
@@ -150,11 +163,27 @@ def add(text: str, source: str, project: str | None, entry_type: str | None, tag
             app.close()
 
 
+
 @cli.command()
-def doctor() -> None:
-    """Check the configured extractor backend without creating entries."""
+@click.option("--deep", is_flag=True, help="Run deep health check with a test extraction.")
+def doctor(deep: bool) -> None:
+    """Check the configured extractor backend and database migrations."""
     try:
-        result = check_extractor_backend(Config())
+        config = Config()
+        result = check_extractor_backend(config, deep=deep)
+
+        applied = []
+        pending = []
+        if not config.database_path.exists():
+            if config.migrations_dir.exists():
+                pending = [f.stem for f in sorted(config.migrations_dir.glob("*.sql"))]
+        else:
+            app = PIEApp(config)
+            try:
+                pending = app.db.pending_migrations()
+                applied = app.db.applied_migrations()
+            finally:
+                app.close()
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
 
@@ -166,8 +195,32 @@ def doctor() -> None:
     if result.get("prompt_version"):
         click.echo(f"   Prompt:        {result['prompt_version']}")
 
+    if result.get("warnings"):
+        click.echo("   Warnings:")
+        for warning in result["warnings"]:
+            click.echo(f"     - {warning}")
+
+    click.echo("")
+    click.echo("Schema Migrations:")
+    if applied:
+        click.echo(f"   Current Schema Version: {applied[-1][0]}")
+        click.echo(f"   Applied migrations ({len(applied)}):")
+        for version, applied_at in applied:
+            click.echo(f"     - {version} (applied at {applied_at})")
+    else:
+        click.echo("   Current Schema Version: -")
+        click.echo("   Applied migrations: none")
+
+    if pending:
+        click.echo(f"   Pending migrations ({len(pending)}):")
+        for version in pending:
+            click.echo(f"     - {version}")
+    else:
+        click.echo("   Pending migrations: none")
+
     if not result["ok"]:
         raise click.exceptions.Exit(1)
+
 
 
 @cli.group()
@@ -656,6 +709,79 @@ def entries_reprocess(
     finally:
         if app is not None:
             app.close()
+
+
+
+@entries.command(name="delete")
+@click.argument("structured_entry_id")
+@click.option("--yes", "-y", "force", is_flag=True, help="Skip confirmation prompt.")
+def entries_delete(structured_entry_id: str, force: bool) -> None:
+    """Soft-delete an entry by its structured entry ID."""
+    if not force:
+        click.confirm(
+            f"Are you sure you want to delete entry '{structured_entry_id}'? "
+            "(This can be undone with 'pie entries restore')",
+            abort=True,
+        )
+
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.delete_entry(structured_entry_id)
+        click.echo(f"[OK] {result['message']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="restore")
+@click.argument("structured_entry_id")
+def entries_restore(structured_entry_id: str) -> None:
+    """Restore a soft-deleted entry by its structured entry ID."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.restore_entry(structured_entry_id)
+        click.echo(f"[OK] {result['message']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="purge")
+@click.option(
+    "--older-than",
+    "days_old",
+    default=30,
+    show_default=True,
+    type=click.IntRange(min=0),
+    help="Permanently delete entries soft-deleted older than N days.",
+)
+@click.option("--yes", "-y", "force", is_flag=True, help="Skip confirmation prompt.")
+def entries_purge(days_old: int, force: bool) -> None:
+    """Permanently delete soft-deleted entries."""
+    if not force:
+        click.confirm(
+            f"Are you sure you want to permanently delete (purge) all entries soft-deleted "
+            f"more than {days_old} days ago? (This action CANNOT be undone)",
+            abort=True,
+        )
+
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.purge_deleted(days_old=days_old)
+        click.echo(f"[OK] {result['message']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
 
 
 @cli.command()

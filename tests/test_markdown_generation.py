@@ -62,11 +62,28 @@ class TestMarkdownGeneration:
         content = note_path.read_text(encoding="utf-8")
         assert "Low confidence" in content or "low confidence" in content.lower()
 
-    def test_high_confidence_no_warning(self, app):
+    def test_high_confidence_no_warning(self, app, monkeypatch):
         """High confidence entries do NOT show a low confidence warning."""
+        from personal_intelligence_engine.app.domain.schemas import ExtractionResult
+        from personal_intelligence_engine.app.domain.types import EntryType
+
+        def mock_extract(self, content):
+            return ExtractionResult(
+                entry_type=EntryType.DECISION,
+                summary="Decision about cache",
+                confidence=0.85,
+                tags=["cache"],
+            )
+
+        monkeypatch.setattr(
+            "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+            mock_extract,
+        )
+
         result = app.add_entry("Eu decidi implementar o cache")
         assert result["confidence"] >= 0.70
 
         note_path = Path(result["note_path"])
         content = note_path.read_text(encoding="utf-8")
         assert "Low confidence" not in content
+

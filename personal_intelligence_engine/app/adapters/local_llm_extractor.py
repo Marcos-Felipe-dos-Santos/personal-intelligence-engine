@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -48,6 +49,7 @@ class LocalLLMHealthCheck:
     message: str
     model_name: str | None = None
     prompt_version: str | None = None
+    warnings: list[str] = dataclass_field(default_factory=list)
 
 
 class OllamaClient(Protocol):
@@ -257,6 +259,44 @@ class LocalLLMExtractor:
             message=f"Ollama is available and model '{self.model}' is installed.",
             model_name=self.model,
             prompt_version=self.prompt_version,
+        )
+
+    def deep_health_check(self) -> LocalLLMHealthCheck:
+        """Full validation: availability + test extraction with synthetic input."""
+        basic = self.health_check()
+        if not basic.ok:
+            return basic
+
+        test_input = "Decidi usar SQLite para o projeto PIE."
+        try:
+            result = self.extract(test_input)
+        except LocalLLMExtractorError as exc:
+            return LocalLLMHealthCheck(
+                ok=False,
+                message=f"Model responds but extraction failed: {exc}",
+                model_name=self.model,
+                prompt_version=self.prompt_version,
+            )
+
+        # Validate output quality
+        warnings: list[str] = []
+        if result.confidence <= 0.0 or result.confidence >= 1.0:
+            warnings.append(f"Suspicious confidence: {result.confidence}")
+        if not result.summary.strip():
+            warnings.append("Empty summary returned")
+        if result.entry_type is None:
+            warnings.append("No entry_type returned")
+
+        message = f"Ollama is available, model '{self.model}' produces valid extractions."
+        if warnings:
+            message += f" Warnings: {'; '.join(warnings)}"
+
+        return LocalLLMHealthCheck(
+            ok=True,
+            message=message,
+            model_name=self.model,
+            prompt_version=self.prompt_version,
+            warnings=warnings,
         )
 
     def _generate(self, content: str) -> dict[str, Any]:

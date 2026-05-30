@@ -16,9 +16,12 @@ def _configure_temp_env(monkeypatch, work_dir) -> None:
     monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "fake")
 
 
-def _add_entry(text: str) -> str:
+def _add_entry(text: str, auto_approve: bool = False) -> str:
     """Add an entry and return the structured entry ID."""
-    result = CliRunner().invoke(cli, ["add", text])
+    args = ["add", text]
+    if auto_approve:
+        args.append("--auto-approve")
+    result = CliRunner().invoke(cli, args)
     assert result.exit_code == 0, result.output
     match = re.search(r"Structured ID:\s+([0-9a-f-]+)", result.output)
     assert match is not None
@@ -78,9 +81,9 @@ def test_entries_list_filters_by_project(monkeypatch, work_dir):
 
 def test_entries_list_filters_by_validation_status(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    # "decidi" => decision, confidence 0.85 => valid
-    valid_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
-    # fallback => general_note, confidence 0.50 => needs_review
+    # "decidi" => decision, confidence 0.60 => needs_review (unless auto-approved)
+    valid_id = _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
+    # fallback => general_note, confidence 0.30 => needs_review
     review_id = _add_entry("Nota sintetica sem projeto claro")
 
     result_valid = CliRunner().invoke(cli, ["entries", "list", "--status", "valid"])
@@ -141,7 +144,7 @@ def test_entries_show_displays_entry_details(monkeypatch, work_dir):
     assert "decision" in result.output
     assert "Summary:" in result.output
     assert "Confidence:" in result.output
-    assert "85%" in result.output
+    assert "60%" in result.output
     assert "Tags:" in result.output
     assert "Validation Status:" in result.output
     assert "Created At:" in result.output
@@ -283,7 +286,7 @@ def test_search_filters_by_project(monkeypatch, work_dir):
 
 def test_search_filters_by_validation_status(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
-    valid_id = _add_entry("Eu decidi usar SQLite no projeto sintetico")
+    valid_id = _add_entry("Eu decidi usar SQLite no projeto sintetico", auto_approve=True)
     review_id = _add_entry("Nota sintetica sem projeto claro")
 
     result_valid = CliRunner().invoke(cli, ["search", "sintetico", "--status", "valid"])

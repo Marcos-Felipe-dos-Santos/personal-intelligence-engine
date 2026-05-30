@@ -23,6 +23,7 @@ from personal_intelligence_engine.app.domain.types import (
     AuditStatus,
     EntryStatus,
     EntryType,
+    ValidationStatus,
 )
 from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 from personal_intelligence_engine.app.repositories.database import Database
@@ -109,6 +110,7 @@ class PIEApp:
         project: str | None = None,
         entry_type: str | None = None,
         tags: list[str] | None = None,
+        auto_approve: bool = False,
     ) -> dict:
         """Full pipeline: ingest → extract → override → validate → markdown → audit.
 
@@ -118,6 +120,7 @@ class PIEApp:
             project: Optional project name override.
             entry_type: Optional entry type override (must be a valid EntryType value).
             tags: Optional list of tags to merge with extracted tags.
+            auto_approve: If True, skip needs_review even for low-confidence entries.
 
         Returns:
             Dict with entry_id, structured_entry_id, status, note_path.
@@ -187,7 +190,7 @@ class PIEApp:
         ))
 
         # 4. Handle low confidence
-        if extraction.confidence < LOW_CONFIDENCE_THRESHOLD:
+        if extraction.confidence < LOW_CONFIDENCE_THRESHOLD and not auto_approve:
             self.entries_repo.update_raw_entry_status(
                 raw.id,
                 EntryStatus.NEEDS_REVIEW.value,
@@ -206,6 +209,19 @@ class PIEApp:
                 EntryStatus.PROCESSED.value,
                 structured.updated_at,
             )
+            if structured.validation_status == ValidationStatus.NEEDS_REVIEW:
+                self.entries_repo.update_structured_entry(
+                    structured_entry_id=structured.id,
+                    entry_type=structured.entry_type.value,
+                    project=structured.project,
+                    summary=structured.summary,
+                    confidence=structured.confidence,
+                    structured_json=structured.structured_json,
+                    validation_status=ValidationStatus.VALID.value,
+                    updated_at=structured.updated_at,
+                )
+                structured = structured.model_copy(update={"validation_status": ValidationStatus.VALID})
+
 
         # 5. Generate Markdown note
         generated = self.markdown.generate_note(structured, text)
@@ -483,6 +499,70 @@ class PIEApp:
             results.append(entry)
         return results
 
+    # --- Delete / Restore / Purge ---
+
+    def delete_entry(self, structured_entry_id: str) -> dict:
+        """Soft-delete an entry by structured entry ID."""
+        deleted_at = datetime.now(timezone.utc).isoformat()
+        raw_entry_id = self.entries_repo.soft_delete_entry(structured_entry_id, deleted_at)
+        if raw_entry_id is None:
+            raise ValueError(
+                f"No active entry found for structured entry ID '{structured_entry_id}'."
+            )
+        self.audit.log(AuditLogCreate(
+            raw_entry_id=raw_entry_id,
+            action=AuditAction.ENTRY_DELETED,
+            actor="user",
+            method="cli",
+            status=AuditStatus.SUCCESS,
+        ))
+        return {
+            "status": "deleted",
+            "structured_entry_id": structured_entry_id,
+            "raw_entry_id": raw_entry_id,
+            "message": "Entry soft-deleted. Use 'pie entries restore' to undo.",
+        }
+
+    def restore_entry(self, structured_entry_id: str) -> dict:
+        """Restore a soft-deleted entry by structured entry ID."""
+        raw_entry_id = self.entries_repo.restore_entry(structured_entry_id)
+        if raw_entry_id is None:
+            raise ValueError(
+                f"No deleted entry found for structured entry ID '{structured_entry_id}'."
+            )
+        self.audit.log(AuditLogCreate(
+            raw_entry_id=raw_entry_id,
+            action=AuditAction.ENTRY_RESTORED,
+            actor="user",
+            method="cli",
+            status=AuditStatus.SUCCESS,
+        ))
+        return {
+            "status": "restored",
+            "structured_entry_id": structured_entry_id,
+            "raw_entry_id": raw_entry_id,
+            "message": "Entry restored successfully.",
+        }
+
+    def purge_deleted(self, days_old: int = 30) -> dict:
+        """Permanently delete entries that were soft-deleted more than N days ago."""
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
+        count = self.entries_repo.purge_deleted_entries(cutoff)
+        self.audit.log(AuditLogCreate(
+            action=AuditAction.ENTRIES_PURGED,
+            actor="user",
+            method="cli",
+            status=AuditStatus.SUCCESS,
+            error_message=f"Purged {count} entries older than {days_old} days.",
+        ))
+        return {
+            "status": "purged",
+            "count": count,
+            "days_old": days_old,
+            "message": f"Permanently deleted {count} entries soft-deleted more than {days_old} days ago.",
+        }
+
     def close(self) -> None:
         """Close database connection."""
         self.db.close()
@@ -661,7 +741,11 @@ class PIEApp:
         return message
 
 
-def check_extractor_backend(config: Config, http_client: OllamaClient | None = None) -> dict:
+def check_extractor_backend(
+    config: Config,
+    http_client: OllamaClient | None = None,
+    deep: bool = False,
+) -> dict:
     """Check the configured extractor backend without creating database entries."""
     if config.extractor_backend == "fake":
         return {
@@ -670,6 +754,7 @@ def check_extractor_backend(config: Config, http_client: OllamaClient | None = N
             "message": "FakeExtractor is available.",
             "model_name": "FakeExtractor",
             "prompt_version": None,
+            "warnings": [],
         }
 
     if config.extractor_backend == "ollama":
@@ -689,15 +774,17 @@ def check_extractor_backend(config: Config, http_client: OllamaClient | None = N
                 "message": str(exc),
                 "model_name": config.ollama_model or None,
                 "prompt_version": None,
+                "warnings": [],
             }
 
-        health = extractor.health_check()
+        health = extractor.deep_health_check() if deep else extractor.health_check()
         return {
             "ok": health.ok,
             "backend": "ollama",
             "message": health.message,
             "model_name": health.model_name,
             "prompt_version": health.prompt_version,
+            "warnings": health.warnings,
         }
 
     return {
@@ -706,4 +793,6 @@ def check_extractor_backend(config: Config, http_client: OllamaClient | None = N
         "message": f"Invalid extractor backend '{config.extractor_backend}'. Use 'fake' or 'ollama'.",
         "model_name": None,
         "prompt_version": None,
+        "warnings": [],
     }
+

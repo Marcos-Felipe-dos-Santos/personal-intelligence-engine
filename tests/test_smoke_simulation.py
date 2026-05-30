@@ -63,52 +63,52 @@ SYNTHETIC_ENTRIES = [
         "Projeto: PIE. Tipo: decisão. Texto: Decidi manter SQLite como fonte de verdade. Tags: arquitetura, sqlite",
         "decision",
         "PIE",
-        ["--project", "PIE"],
+        ["--project", "PIE", "--auto-approve"],
     ),
     (
         "Projeto: Study Plan. Tipo: tarefa. Texto: Preciso revisar conceitos de SQL no sábado. Tags: estudo, sql",
         "candidate_task",
         "Study Plan",
-        ["--project", "Study Plan"],
+        ["--project", "Study Plan", "--auto-approve"],
     ),
     (
         "Projeto: Health Routine. Tipo: problema. Texto: Estou dormindo tarde por usar celular na cama. Tags: sono, hábito",
         "problem",
         "Health Routine",
-        ["--project", "Health Routine"],
+        ["--project", "Health Routine", "--auto-approve"],
     ),
     (
         "Projeto: Finance Lab. Tipo: ideia. Texto: Criar dashboard local para controle de gastos mensais. Tags: finanças, dashboard",
         "idea",
         "Finance Lab",
-        ["--project", "Finance Lab"],
+        ["--project", "Finance Lab", "--auto-approve"],
     ),
     (
         "Projeto: PIE. Tipo: insight. Texto: Percebi que relatórios semanais ajudam na revisão do progresso. Tags: relatórios, processo",
         "insight",
         "PIE",
-        ["--project", "PIE"],
+        ["--project", "PIE", "--auto-approve"],
     ),
     (
         "Projeto: Study Plan. Tipo: referência. Texto: Encontrei um artigo sobre normalização de banco de dados. Tags: estudo, referência",
         "reference",
         "Study Plan",
-        ["--project", "Study Plan"],
+        ["--project", "Study Plan", "--auto-approve"],
     ),
     (
         "Projeto: PIE. Tipo: revisão. Texto: A extração classificou uma decisão como ideia em duas entradas. Tags: qualidade, extração",
         "review",
         "PIE",
-        ["--project", "PIE"],
+        ["--project", "PIE", "--auto-approve"],
     ),
-    # Entry 8: low-confidence (short, no keyword match → general_note, 0.50)
+    # Entry 8: low-confidence (short, no keyword match → general_note, 0.30)
     (
         "Anotação rápida sem contexto",
         "general_note",
         None,
         [],
     ),
-    # Entry 9: low-confidence (long 20+ words, no keyword match → log, 0.50)
+    # Entry 9: low-confidence (long 20+ words, no keyword match → log, 0.30)
     (
         "Esta é uma anotação longa sem palavras-chave específicas que serve para testar o cenário de baixa "
         "confiança quando o FakeExtractor não consegue classificar o conteúdo de forma determinística usando "
@@ -118,6 +118,7 @@ SYNTHETIC_ENTRIES = [
         [],
     ),
 ]
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -223,7 +224,7 @@ class TestFlow2Add:
         assert "Note:" in result.output
 
     def test_add_low_confidence_triggers_needs_review(self, monkeypatch, work_dir):
-        """Entry 8 (short, no keyword) should have confidence 0.50 → needs_review."""
+        """Entry 8 (short, no keyword) should have confidence 0.30 → needs_review."""
         _configure_temp_env(monkeypatch, work_dir)
         runner = CliRunner()
         result = runner.invoke(cli, ["add", SYNTHETIC_ENTRIES[7][0]])

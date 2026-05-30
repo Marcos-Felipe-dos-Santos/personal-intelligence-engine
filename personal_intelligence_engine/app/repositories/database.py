@@ -6,12 +6,15 @@ Services MUST NOT import sqlite3 directly — they use repositories instead.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 from personal_intelligence_engine.app.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -72,6 +75,8 @@ class Database:
             if version in applied:
                 continue
 
+            logger.info("Applying migration: %s", version)
+
             sql = migration_file.read_text(encoding="utf-8")
             conn.executescript(sql)
             conn.execute(
@@ -79,6 +84,65 @@ class Database:
                 (version,),
             )
             conn.commit()
+
+            # Verify the migration was recorded
+            self._verify_migration(version)
+
+            logger.info("Migration applied successfully: %s", version)
+
+    def pending_migrations(self) -> list[str]:
+        """Return a list of migration versions that have not been applied yet."""
+        conn = self.connection
+
+        # Ensure schema_migrations table exists
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            """
+        )
+
+        cursor = conn.execute("SELECT version FROM schema_migrations ORDER BY version;")
+        applied = {row["version"] for row in cursor.fetchall()}
+
+        migrations_dir = self._config.migrations_dir
+        if not migrations_dir.exists():
+            return []
+
+        migration_files = sorted(migrations_dir.glob("*.sql"))
+        return [f.stem for f in migration_files if f.stem not in applied]
+
+    def applied_migrations(self) -> list[tuple[str, str]]:
+        """Return a list of (version, applied_at) for all applied migrations."""
+        conn = self.connection
+
+        # Ensure schema_migrations table exists
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            """
+        )
+
+        cursor = conn.execute(
+            "SELECT version, applied_at FROM schema_migrations ORDER BY version;"
+        )
+        return [(row["version"], row["applied_at"]) for row in cursor.fetchall()]
+
+    def _verify_migration(self, version: str) -> None:
+        """Verify the migration was recorded in schema_migrations."""
+        row = self.fetchone(
+            "SELECT version FROM schema_migrations WHERE version = ?;",
+            (version,),
+        )
+        if row is None:
+            raise RuntimeError(
+                f"Migration '{version}' was not recorded after execution."
+            )
 
     def backup_to(self, destination: str | Path) -> None:
         """Copy the SQLite database to destination using SQLite's backup API."""

@@ -16,6 +16,7 @@ Stores the original, unprocessed text input exactly as captured.
 | `updated_at` | TEXT NOT NULL | ISO 8601 UTC timestamp |
 | `metadata_json` | TEXT | Optional JSON metadata |
 | `content_hash` | TEXT NOT NULL | SHA-256 hash of content |
+| `deleted_at` | TEXT | ISO 8601 UTC timestamp if soft-deleted, otherwise NULL |
 
 ### `structured_entries`
 
@@ -33,6 +34,7 @@ Stores the extracted, validated, structured representation of a raw entry.
 | `validation_status` | TEXT NOT NULL | valid, needs_review, or invalid |
 | `created_at` | TEXT NOT NULL | ISO 8601 UTC timestamp |
 | `updated_at` | TEXT NOT NULL | ISO 8601 UTC timestamp |
+| `deleted_at` | TEXT | ISO 8601 UTC timestamp if soft-deleted, otherwise NULL |
 
 ### `audit_logs`
 
@@ -103,6 +105,25 @@ Tracks applied database migrations.
 | `problem` | Bug, error, or blocker |
 | `review` | Review or retrospective |
 | `general_note` | Uncategorized note |
+
+## Audit Actions
+
+| Action | Description |
+|--------|-------------|
+| `entry_created` | A new raw entry has been captured in the system. |
+| `extraction_completed` | Structured data extraction from raw content completed. |
+| `validation_completed` | Extracted structured data was successfully validated. |
+| `structured_entry_created` | A structured entry has been saved in the database. |
+| `markdown_generated` | A local Markdown note has been created or updated for an entry. |
+| `report_generated` | A periodic report (daily, weekly, project) has been compiled. |
+| `low_confidence` | Extraction confidence is below the threshold, prompting review. |
+| `validation_failed` | Validation of the extracted structured data failed. |
+| `review_approved` | An operator approved an entry, moving it out of the review queue. |
+| `review_rejected` | An operator rejected an entry, marking it invalid. |
+| `review_edited` | A structured entry was modified by the user (revisions recorded). |
+| `entry_deleted` | An entry was soft-deleted by the user. |
+| `entry_restored` | A soft-deleted entry was restored by the user. |
+| `entries_purged` | Soft-deleted entries older than the cutoff date were permanently deleted. |
 
 ## Confidence Rules
 

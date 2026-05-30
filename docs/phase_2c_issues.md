@@ -16,7 +16,7 @@ Non-goals for this phase:
 - No fine-tuning.
 - No broad model benchmark.
 
-## Issue 1: Create Synthetic Evaluation Fixtures
+## Issue 1 [DONE]: Create Synthetic Evaluation Fixtures
 
 ### Objective
 
@@ -49,7 +49,7 @@ Create a small, representative set of synthetic text inputs for evaluating extra
 - Validate every fixture includes input text and an identifier.
 - Validate fixture inputs contain no obvious real personal data patterns.
 
-## Issue 2: Define Expected Outputs Per Entry Type
+## Issue 2 [DONE]: Define Expected Outputs Per Entry Type
 
 ### Objective
 
@@ -82,7 +82,7 @@ Define expected extraction outputs for each synthetic fixture.
 - Validate `entry_type` values are from the current taxonomy.
 - Validate confidence expectations are within `0.0` to `1.0`.
 
-## Issue 3: Define Simple Scoring Rules
+## Issue 3 [DONE]: Define Simple Scoring Rules
 
 ### Objective
 
@@ -128,7 +128,7 @@ Suggested approach:
 - Unit tests for confidence tolerance or band scoring.
 - Tests for deterministic total score.
 
-## Issue 4: Create Lightweight Evaluation Command Or Script
+## Issue 4 [DONE]: Create Lightweight Evaluation Command Or Script
 
 ### Objective
 
@@ -163,7 +163,7 @@ Create a small way to run synthetic evaluation locally.
 - Evaluation uses synthetic fixtures only.
 - Evaluation output includes per-fixture scores.
 
-## Issue 5: Compare FakeExtractor Vs Ollama
+## Issue 5 [DONE]: Compare FakeExtractor Vs Ollama
 
 ### Objective
 
@@ -196,7 +196,7 @@ Compare deterministic and local LLM extraction results on the same synthetic fix
 - Validate comparison handles one backend missing.
 - Validate backend labels are present.
 
-## Issue 6: Generate Markdown Evaluation Report
+## Issue 6 [DONE]: Generate Markdown Evaluation Report
 
 ### Objective
 
@@ -231,7 +231,7 @@ Generate a human-readable Markdown report from evaluation results.
 - Report contains backend labels.
 - Report contains score summaries.
 
-## Issue 7: Document Local Model Selection Criteria
+## Issue 7 [PENDING]: Document Local Model Selection Criteria
 
 ### Objective
 
@@ -263,7 +263,7 @@ Document practical criteria for choosing a local model for PIE extraction.
 - Documentation link check if a docs link checker is later added.
 - No automated tests required for content beyond basic repository checks.
 
-## Issue 8: Document Evaluation Limitations
+## Issue 8 [PENDING]: Document Evaluation Limitations
 
 ### Objective
 

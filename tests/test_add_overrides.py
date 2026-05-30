@@ -11,12 +11,10 @@ import json
 import sqlite3
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from personal_intelligence_engine.app.cli.commands import cli
 from personal_intelligence_engine.app.domain.types import EntryType
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -179,9 +177,6 @@ class TestProjectFlag:
             "--project", "PIE",
         ])
 
-        from datetime import date
-
-        today = date.today().isoformat()
         result = runner.invoke(cli, ["report", "project", "--project", "PIE"])
         assert result.exit_code == 0
         assert "[OK] Project report generated" in result.output
@@ -224,15 +219,16 @@ class TestTypeFlag:
 
     def test_type_does_not_change_confidence(self, monkeypatch, work_dir):
         _configure_env(monkeypatch, work_dir)
-        # "Anotação rápida" → general_note, confidence 0.50
+        # "Anotação rápida" → general_note, confidence 0.30
         result = CliRunner().invoke(cli, [
             "add",
             "Anotação rápida",
             "--type", "decision",
         ])
         assert result.exit_code == 0
-        # Confidence should still be 0.50 (50%), not boosted
-        assert "Confidence:    50%" in result.output
+        # Confidence should still be 0.30 (30%), not boosted
+        assert "Confidence:    30%" in result.output
+
 
     def test_all_valid_types_accepted(self, monkeypatch, work_dir):
         _configure_env(monkeypatch, work_dir)
@@ -422,10 +418,11 @@ class TestReviewWithOverrides:
     """Validate that review flow works correctly with overridden entries."""
 
     def test_low_confidence_with_override_still_triggers_review(self, monkeypatch, work_dir):
-        """Even with --project and --type, confidence 0.50 still triggers needs_review."""
+        """Even with --project and --type, confidence 0.30 still triggers needs_review."""
         _configure_env(monkeypatch, work_dir)
         runner = CliRunner()
-        # "Anotação rápida" → general_note, confidence 0.50
+        # "Anotação rápida" → general_note, confidence 0.30
+
         result = runner.invoke(cli, [
             "add",
             "Anotação rápida",

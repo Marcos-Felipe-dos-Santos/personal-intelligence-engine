@@ -48,6 +48,9 @@ class AuditAction(str, Enum):
     REVIEW_APPROVED = "review_approved"
     REVIEW_REJECTED = "review_rejected"
     REVIEW_EDITED = "review_edited"
+    ENTRY_DELETED = "entry_deleted"
+    ENTRY_RESTORED = "entry_restored"
+    ENTRIES_PURGED = "entries_purged"
 
 
 class AuditStatus(str, Enum):

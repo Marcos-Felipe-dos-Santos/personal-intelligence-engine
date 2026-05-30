@@ -72,7 +72,28 @@ Only commit synthetic examples under `examples/` and synthetic fixtures under `t
 
 ## Data Deletion
 
-To delete all PIE data:
+### Entry-Level Deletion Controls
+
+PIE provides granular CLI commands to manage local data deletion, distinguishing between temporary soft-deletion and permanent hard-purging:
+
+1. **Soft-Delete (`pie entries delete <id>`)**:
+   - Moves the entry to a deleted state by setting its `deleted_at` timestamp.
+   - Soft-deleted entries are automatically filtered out from search results, listings, detail views, and new reports.
+   - Can be reversed at any time via `pie entries restore`.
+   - Preserves database integrity while allowing recovery.
+
+2. **Restore (`pie entries restore <id>`)**:
+   - Reverses a soft-delete, clearing the `deleted_at` timestamp and making the entry active again.
+
+3. **Hard-Purge (`pie entries purge [--older-than <days>]`)**:
+   - Permanently deletes entries that have been in soft-deleted state for more than `<days>` (defaults to 30 days; use `--older-than 0` to purge immediately).
+   - This physically removes the `raw_entries`, `structured_entries`, `structured_entry_revisions`, and `generated_files` records from the SQLite database.
+   - Corresponding entries in the `audit_logs` are kept to preserve the historic action audit trail, but they are safely orphaned (their `raw_entry_id` is set to `NULL` to comply with SQLite foreign key constraints).
+   - *Note*: Hard-purging removes the database records but does not automatically delete corresponding physical Markdown files in `notes/` or `reports/` if they were already exported. These filesystem artifacts must be cleaned up manually if required.
+
+### Full System Deletion
+
+To completely wipe all PIE data from your machine:
 
 1. Delete the SQLite database file (default: `pie.db`).
 2. Delete the `notes/` directory.

@@ -38,6 +38,13 @@ PIE Core is the memory and evidence layer of the project. Before building an Ass
 - `pie export markdown` exports structured entries grouped by entry type.
 - `backups/` and `exports/` are ignored by Git and treated as sensitive plaintext artifacts.
 
+### Data Deletion (User Control)
+
+- `pie entries delete <id>` soft-deletes a structured entry and its raw entry.
+- `pie entries restore <id>` restores a soft-deleted entry.
+- `pie entries purge --older-than <days>` permanently deletes entries soft-deleted longer than N days.
+- Deletions are audited via `ENTRY_DELETED`, `ENTRY_RESTORED`, and `ENTRIES_PURGED` actions.
+
 ### Safe Reprocessing
 
 - `pie entries reprocess <structured_entry_id> --dry-run` previews changes.
@@ -98,6 +105,7 @@ Human approval rules are documented for future writes and external actions, but 
 - PIE remains alpha software and should be used carefully with real personal data.
 - Markdown notes and reports are projections and can become stale after reprocessing.
 - Backups, exports, notes, reports, and SQLite databases are plaintext local files.
+- Confidence scores are extractor-specific and not calibrated across extractors (e.g., FakeExtractor recalibrated to 0.30/0.60 vs Ollama LLM scores).
 - Optional Ollama extraction sends raw entry text to the configured local endpoint.
 - Search is textual, not semantic.
 - The future Assistant Layer must not bypass Core, source citations, or human approval.

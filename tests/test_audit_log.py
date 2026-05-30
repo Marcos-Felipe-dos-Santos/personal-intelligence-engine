@@ -96,11 +96,12 @@ class TestAuditLog:
         assert low_conf_logs[0].status == AuditStatus.WARNING
 
     def test_high_confidence_no_low_confidence_event(self, app):
-        """High confidence entries do NOT trigger low_confidence audit."""
-        result = app.add_entry("Eu decidi mudar a stack")
+        """High confidence/auto-approved entries do NOT trigger low_confidence audit."""
+        result = app.add_entry("Eu decidi mudar a stack", auto_approve=True)
         logs = app.audit.get_logs_for_entry(result["entry_id"])
         actions = {log.action for log in logs}
         assert AuditAction.LOW_CONFIDENCE not in actions
+
 
     def test_audit_log_has_timestamps(self, app):
         """Audit logs have created_at timestamps."""
