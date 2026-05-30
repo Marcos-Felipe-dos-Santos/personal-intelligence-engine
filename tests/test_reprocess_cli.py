@@ -3,12 +3,13 @@
 import json
 import re
 import sqlite3
+from pathlib import Path
 
 from click.testing import CliRunner
 
 from personal_intelligence_engine.app.cli.commands import cli
 from personal_intelligence_engine.app.domain.schemas import ExtractionResult
-from personal_intelligence_engine.app.domain.types import EntryType
+from personal_intelligence_engine.app.domain.types import LOW_CONFIDENCE_THRESHOLD, EntryType
 from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 
 
@@ -585,6 +586,41 @@ def test_reprocess_low_confidence_gets_needs_review(monkeypatch, work_dir):
         row = conn.execute("SELECT * FROM structured_entries WHERE id = ?;", (structured_id,)).fetchone()
         assert row["validation_status"] == "needs_review"
         assert row["confidence"] == 0.45
+
+
+def test_reprocess_uses_central_low_confidence_threshold(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Eu decidi usar SQLite", auto_approve=True)
+    low_confidence = LOW_CONFIDENCE_THRESHOLD - 0.01
+
+    def mock_extract(self, content):
+        return ExtractionResult(
+            entry_type=EntryType.DECISION,
+            summary="Threshold driven decision",
+            confidence=low_confidence,
+            tags=["threshold"],
+        )
+
+    monkeypatch.setattr(
+        "personal_intelligence_engine.app.adapters.fake_extractor.FakeExtractor.extract",
+        mock_extract,
+    )
+
+    result = CliRunner().invoke(cli, ["entries", "reprocess", structured_id])
+    assert result.exit_code == 0, result.output
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM structured_entries WHERE id = ?;", (structured_id,)).fetchone()
+        assert row["validation_status"] == "needs_review"
+        assert row["confidence"] == low_confidence
+
+
+def test_reprocess_service_does_not_duplicate_threshold_literal():
+    source_path = Path(__file__).resolve().parents[1] / "personal_intelligence_engine" / "app" / "services" / "reprocess_service.py"
+    source = source_path.read_text(encoding="utf-8")
+
+    assert "0.70" not in source
 
 
 def test_reprocess_does_not_regenerate_markdown(monkeypatch, work_dir):

@@ -128,38 +128,40 @@ class PIEApp:
         if not text.strip():
             raise ValueError("Input text cannot be empty.")
 
-        # 1. Ingest raw entry
-        raw = self.ingestion.ingest(RawEntryCreate(content=text, source=source))
+        # 1. Ingest raw entry. This is committed before extraction so raw input
+        # is preserved if a configured extractor fails.
+        with self.db.transaction():
+            raw = self.ingestion.ingest(RawEntryCreate(content=text, source=source))
 
-        # Audit: entry created
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw.id,
-            action=AuditAction.ENTRY_CREATED,
-            actor="system",
-            method="cli",
-            input_hash=raw.content_hash,
-            status=AuditStatus.SUCCESS,
-        ))
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=raw.id,
+                action=AuditAction.ENTRY_CREATED,
+                actor="system",
+                method="cli",
+                input_hash=raw.content_hash,
+                status=AuditStatus.SUCCESS,
+            ))
 
         # 2. Extract structured data
         try:
             extraction = self.extraction.extract(text)
         except Exception as exc:
-            self.entries_repo.update_raw_entry_status(
-                raw.id,
-                EntryStatus.ERROR.value,
-                raw.updated_at,
-            )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=raw.id,
-                action=AuditAction.EXTRACTION_COMPLETED,
-                actor="system",
-                method=self._extractor_method(),
-                model_name=self._extractor_model_name(),
-                prompt_version=self._extractor_prompt_version(),
-                status=AuditStatus.ERROR,
-                error_message=self._summarize_error(exc, raw_text=text),
-            ))
+            with self.db.transaction():
+                self.entries_repo.update_raw_entry_status(
+                    raw.id,
+                    EntryStatus.ERROR.value,
+                    raw.updated_at,
+                )
+                self.audit.log(AuditLogCreate(
+                    raw_entry_id=raw.id,
+                    action=AuditAction.EXTRACTION_COMPLETED,
+                    actor="system",
+                    method=self._extractor_method(),
+                    model_name=self._extractor_model_name(),
+                    prompt_version=self._extractor_prompt_version(),
+                    status=AuditStatus.ERROR,
+                    error_message=self._summarize_error(exc, raw_text=text),
+                ))
             raise
 
         # 2b. Apply user-provided overrides (project, entry_type, tags)
@@ -167,73 +169,80 @@ class PIEApp:
             extraction, project=project, entry_type=entry_type, tags=tags,
         )
 
-        # Audit: extraction completed
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw.id,
-            action=AuditAction.EXTRACTION_COMPLETED,
-            actor="system",
-            method=self._extractor_method(),
-            model_name=self._extractor_model_name(),
-            prompt_version=self._extractor_prompt_version(),
-            status=AuditStatus.SUCCESS,
-        ))
+        structured = None
+        try:
+            with self.db.transaction():
+                # Audit: extraction completed
+                self.audit.log(AuditLogCreate(
+                    raw_entry_id=raw.id,
+                    action=AuditAction.EXTRACTION_COMPLETED,
+                    actor="system",
+                    method=self._extractor_method(),
+                    model_name=self._extractor_model_name(),
+                    prompt_version=self._extractor_prompt_version(),
+                    status=AuditStatus.SUCCESS,
+                ))
 
-        # 3. Validate and save structured entry
-        structured = self.validation.validate_and_save(raw.id, extraction)
+                # 3. Validate and save structured entry
+                structured = self.validation.validate_and_save(raw.id, extraction)
 
-        # Audit: validation completed
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw.id,
-            action=AuditAction.VALIDATION_COMPLETED,
-            actor="system",
-            status=AuditStatus.SUCCESS,
-        ))
+                # Audit: validation completed
+                self.audit.log(AuditLogCreate(
+                    raw_entry_id=raw.id,
+                    action=AuditAction.VALIDATION_COMPLETED,
+                    actor="system",
+                    status=AuditStatus.SUCCESS,
+                ))
 
-        # 4. Handle low confidence
-        if extraction.confidence < LOW_CONFIDENCE_THRESHOLD and not auto_approve:
-            self.entries_repo.update_raw_entry_status(
-                raw.id,
-                EntryStatus.NEEDS_REVIEW.value,
-                structured.updated_at,
-            )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=raw.id,
-                action=AuditAction.LOW_CONFIDENCE,
-                actor="system",
-                status=AuditStatus.WARNING,
-                error_message=f"Confidence {extraction.confidence:.2f} below threshold {LOW_CONFIDENCE_THRESHOLD}",
-            ))
-        else:
-            self.entries_repo.update_raw_entry_status(
-                raw.id,
-                EntryStatus.PROCESSED.value,
-                structured.updated_at,
-            )
-            if structured.validation_status == ValidationStatus.NEEDS_REVIEW:
-                self.entries_repo.update_structured_entry(
-                    structured_entry_id=structured.id,
-                    entry_type=structured.entry_type.value,
-                    project=structured.project,
-                    summary=structured.summary,
-                    confidence=structured.confidence,
-                    structured_json=structured.structured_json,
-                    validation_status=ValidationStatus.VALID.value,
-                    updated_at=structured.updated_at,
-                )
-                structured = structured.model_copy(update={"validation_status": ValidationStatus.VALID})
+                # 4. Handle low confidence
+                if extraction.confidence < LOW_CONFIDENCE_THRESHOLD and not auto_approve:
+                    self.entries_repo.update_raw_entry_status(
+                        raw.id,
+                        EntryStatus.NEEDS_REVIEW.value,
+                        structured.updated_at,
+                    )
+                    self.audit.log(AuditLogCreate(
+                        raw_entry_id=raw.id,
+                        action=AuditAction.LOW_CONFIDENCE,
+                        actor="system",
+                        status=AuditStatus.WARNING,
+                        error_message=f"Confidence {extraction.confidence:.2f} below threshold {LOW_CONFIDENCE_THRESHOLD}",
+                    ))
+                else:
+                    self.entries_repo.update_raw_entry_status(
+                        raw.id,
+                        EntryStatus.PROCESSED.value,
+                        structured.updated_at,
+                    )
+                    if structured.validation_status == ValidationStatus.NEEDS_REVIEW:
+                        self.entries_repo.update_structured_entry(
+                            structured_entry_id=structured.id,
+                            entry_type=structured.entry_type.value,
+                            project=structured.project,
+                            summary=structured.summary,
+                            confidence=structured.confidence,
+                            structured_json=structured.structured_json,
+                            validation_status=ValidationStatus.VALID.value,
+                            updated_at=structured.updated_at,
+                        )
+                        structured = structured.model_copy(update={"validation_status": ValidationStatus.VALID})
 
+                # 5. Generate Markdown note and record it in the same DB transaction.
+                generated = self.markdown.generate_note(structured, text)
 
-        # 5. Generate Markdown note
-        generated = self.markdown.generate_note(structured, text)
-
-        # Audit: markdown generated
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw.id,
-            action=AuditAction.MARKDOWN_GENERATED,
-            actor="system",
-            output_hash=generated.content_hash,
-            status=AuditStatus.SUCCESS,
-        ))
+                # Audit: markdown generated
+                self.audit.log(AuditLogCreate(
+                    raw_entry_id=raw.id,
+                    action=AuditAction.MARKDOWN_GENERATED,
+                    actor="system",
+                    output_hash=generated.content_hash,
+                    status=AuditStatus.SUCCESS,
+                ))
+        except Exception:
+            if structured is not None:
+                note_path = self.config.notes_dir / f"{structured.id}.md"
+                note_path.unlink(missing_ok=True)
+            raise
 
         return {
             "entry_id": raw.id,
@@ -388,18 +397,19 @@ class PIEApp:
             }
 
         updated_at = datetime.now(timezone.utc).isoformat()
-        self.entries_repo.mark_review_entry_approved(
-            structured_entry_id=row["structured_entry_id"],
-            raw_entry_id=row["raw_entry_id"],
-            updated_at=updated_at,
-        )
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=row["raw_entry_id"],
-            action=AuditAction.REVIEW_APPROVED,
-            actor="user",
-            method="human_review",
-            status=AuditStatus.SUCCESS,
-        ))
+        with self.db.transaction():
+            self.entries_repo.mark_review_entry_approved(
+                structured_entry_id=row["structured_entry_id"],
+                raw_entry_id=row["raw_entry_id"],
+                updated_at=updated_at,
+            )
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=row["raw_entry_id"],
+                action=AuditAction.REVIEW_APPROVED,
+                actor="user",
+                method="human_review",
+                status=AuditStatus.SUCCESS,
+            ))
 
         return {
             "status": "approved",
@@ -423,18 +433,19 @@ class PIEApp:
             }
 
         updated_at = datetime.now(timezone.utc).isoformat()
-        self.entries_repo.mark_review_entry_rejected(
-            structured_entry_id=row["structured_entry_id"],
-            raw_entry_id=row["raw_entry_id"],
-            updated_at=updated_at,
-        )
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=row["raw_entry_id"],
-            action=AuditAction.REVIEW_REJECTED,
-            actor="user",
-            method="human_review",
-            status=AuditStatus.SUCCESS,
-        ))
+        with self.db.transaction():
+            self.entries_repo.mark_review_entry_rejected(
+                structured_entry_id=row["structured_entry_id"],
+                raw_entry_id=row["raw_entry_id"],
+                updated_at=updated_at,
+            )
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=row["raw_entry_id"],
+                action=AuditAction.REVIEW_REJECTED,
+                actor="user",
+                method="human_review",
+                status=AuditStatus.SUCCESS,
+            ))
 
         return {
             "status": "rejected",

@@ -12,7 +12,11 @@ from personal_intelligence_engine.app.domain.schemas import (
     AuditLogCreate,
     StructuredEntryRevision,
 )
-from personal_intelligence_engine.app.domain.types import AuditAction, AuditStatus
+from personal_intelligence_engine.app.domain.types import (
+    LOW_CONFIDENCE_THRESHOLD,
+    AuditAction,
+    AuditStatus,
+)
 from personal_intelligence_engine.app.repositories.database import Database
 from personal_intelligence_engine.app.repositories.entries_repository import EntriesRepository
 from personal_intelligence_engine.app.repositories.revisions_repository import RevisionsRepository
@@ -63,7 +67,7 @@ class ReprocessService:
 
         # Validate result
         validation_status = "valid"
-        if extraction.confidence < 0.70:
+        if extraction.confidence < LOW_CONFIDENCE_THRESHOLD:
             validation_status = "needs_review"
 
         # Determine old tags
@@ -162,7 +166,7 @@ class ReprocessService:
 
             # Update raw entry status
             raw_status = "processed"
-            if extraction.confidence < 0.70:
+            if extraction.confidence < LOW_CONFIDENCE_THRESHOLD:
                 raw_status = "needs_review"
             self.entries_repo.update_raw_entry_status(raw_entry_id, raw_status, updated_at)
 
@@ -189,13 +193,16 @@ class ReprocessService:
                 status=AuditStatus.SUCCESS,
             ))
 
-            if extraction.confidence < 0.70:
+            if extraction.confidence < LOW_CONFIDENCE_THRESHOLD:
                 self.audit.log(AuditLogCreate(
                     raw_entry_id=raw_entry_id,
                     action=AuditAction.LOW_CONFIDENCE,
                     actor="system",
                     status=AuditStatus.WARNING,
-                    error_message=f"Confidence {extraction.confidence:.2f} below threshold 0.70",
+                    error_message=(
+                        f"Confidence {extraction.confidence:.2f} below "
+                        f"threshold {LOW_CONFIDENCE_THRESHOLD}"
+                    ),
                 ))
 
         return {

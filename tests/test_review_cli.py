@@ -6,6 +6,7 @@ import sqlite3
 from click.testing import CliRunner
 
 from personal_intelligence_engine.app.cli.commands import cli
+from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 
 
 def _configure_temp_env(monkeypatch, work_dir) -> None:
@@ -275,6 +276,28 @@ def test_review_approve_twice_does_not_duplicate_audit_log(monkeypatch, work_dir
     assert len(_fetch_review_approved_logs(work_dir / "pie.db", raw_entry_id)) == 1
 
 
+def test_review_approve_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    before = _fetch_review_state(work_dir / "pie.db", structured_id)
+    original_insert = AuditRepository.insert
+
+    def fail_review_approved(self, log):
+        if log.action.value == "review_approved":
+            raise RuntimeError("simulated approve audit failure")
+        return original_insert(self, log)
+
+    monkeypatch.setattr(AuditRepository, "insert", fail_review_approved)
+
+    result = CliRunner().invoke(cli, ["review", "approve", structured_id])
+
+    assert result.exit_code != 0
+    after = _fetch_review_state(work_dir / "pie.db", structured_id)
+    assert after["raw_status"] == before["raw_status"]
+    assert after["validation_status"] == before["validation_status"]
+    assert _fetch_review_approved_logs(work_dir / "pie.db", before["raw_entry_id"]) == []
+
+
 def test_review_show_after_approve_returns_friendly_error(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     structured_id = _add_entry("Nota sintetica sem projeto claro")
@@ -387,6 +410,28 @@ def test_review_reject_twice_does_not_duplicate_audit_log(monkeypatch, work_dir)
     assert second_result.exit_code == 0
     assert "already processed, valid, or invalid" in second_result.output
     assert len(_fetch_review_rejected_logs(work_dir / "pie.db", raw_entry_id)) == 1
+
+
+def test_review_reject_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    before = _fetch_review_state(work_dir / "pie.db", structured_id)
+    original_insert = AuditRepository.insert
+
+    def fail_review_rejected(self, log):
+        if log.action.value == "review_rejected":
+            raise RuntimeError("simulated reject audit failure")
+        return original_insert(self, log)
+
+    monkeypatch.setattr(AuditRepository, "insert", fail_review_rejected)
+
+    result = CliRunner().invoke(cli, ["review", "reject", structured_id])
+
+    assert result.exit_code != 0
+    after = _fetch_review_state(work_dir / "pie.db", structured_id)
+    assert after["raw_status"] == before["raw_status"]
+    assert after["validation_status"] == before["validation_status"]
+    assert _fetch_review_rejected_logs(work_dir / "pie.db", before["raw_entry_id"]) == []
 
 
 def test_review_show_after_reject_returns_friendly_error(monkeypatch, work_dir):

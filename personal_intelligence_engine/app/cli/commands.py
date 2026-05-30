@@ -52,6 +52,12 @@ def _shorten(value: str, limit: int = 90) -> str:
     return f"{preview[: limit - 3]}..."
 
 
+def _path_display(path: Path) -> tuple[str, bool]:
+    """Return absolute path text and whether the configured path was relative."""
+    expanded = path.expanduser()
+    return str(expanded.resolve()), not expanded.is_absolute()
+
+
 def _render_reprocess_batch_summary(batch: dict, dry_run: bool) -> None:
     """Render batch reprocess totals without exposing raw content."""
     applied = batch["applied"]
@@ -199,6 +205,32 @@ def doctor(deep: bool) -> None:
         click.echo("   Warnings:")
         for warning in result["warnings"]:
             click.echo(f"     - {warning}")
+
+    configured_paths = {
+        "Database": config.database_path,
+        "Notes": config.notes_dir,
+        "Reports": config.reports_dir,
+        "Backups": config.backup_dir,
+        "Exports": config.export_dir,
+    }
+    relative_paths = []
+
+    click.echo("")
+    click.echo("Configured Paths:")
+    for label, path in configured_paths.items():
+        absolute_path, is_relative = _path_display(path)
+        marker = " [relative]" if is_relative else ""
+        click.echo(f"   {label}: {absolute_path}{marker}")
+        if is_relative:
+            relative_paths.append(label)
+
+    if relative_paths:
+        click.echo("")
+        click.echo(
+            "[WARNING] Relative path detected. Running PIE from a different "
+            "working directory may create/use a different database."
+        )
+        click.echo(f"   Relative settings: {', '.join(relative_paths)}")
 
     click.echo("")
     click.echo("Schema Migrations:")

@@ -15,13 +15,21 @@ Keep the test small. Prefer useful operational notes over exhaustive life loggin
 
 ## Daily Routine
 
-1. Create a backup before the first real entry of the day:
+1. Run `pie doctor` before the first real entry of the day and confirm the absolute database path:
+
+```bash
+pie doctor
+```
+
+If `pie doctor` reports a relative path warning, either run PIE consistently from the same working directory or configure absolute paths for `PIE_DATABASE_PATH`, `PIE_NOTES_DIR`, `PIE_REPORTS_DIR`, `PIE_BACKUP_DIR`, and `PIE_EXPORT_DIR`.
+
+2. Create a backup before the first real entry of the day:
 
 ```bash
 pie backup create
 ```
 
-2. Add 3 to 10 entries during the day:
+3. Add 3 to 10 entries during the day:
 
 ```bash
 pie add "Projeto: PIE. Tipo: decisão. Texto: Usar relatórios semanais para revisar progresso do Core. Tags: pie,relatorios"
@@ -30,7 +38,7 @@ pie add "Projeto: PIE. Tipo: decisão. Texto: Usar relatórios semanais para rev
 pie add "Usar relatórios semanais para revisar progresso do Core" --project PIE --type decision --tag pie --tag relatorios
 ```
 
-3. Review uncertain entries:
+4. Review uncertain entries:
 
 ```bash
 pie review list
@@ -40,7 +48,7 @@ pie review reject <structured_entry_id>
 pie review history <structured_entry_id>
 ```
 
-4. Search when checking whether something was already captured:
+5. Search when checking whether something was already captured:
 
 ```bash
 pie search "relatórios semanais"
@@ -48,7 +56,7 @@ pie entries list --status needs_review
 pie entries show <structured_entry_id>
 ```
 
-5. Generate a daily report at the end of the day:
+6. Generate a daily report at the end of the day:
 
 ```bash
 pie report daily --date YYYY-MM-DD

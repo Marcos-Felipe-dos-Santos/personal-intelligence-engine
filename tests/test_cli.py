@@ -65,7 +65,28 @@ def test_doctor_fake_backend_passes(monkeypatch, work_dir):
     assert result.exit_code == 0
     assert "Extractor backend: fake" in result.output
     assert "FakeExtractor is available" in result.output
+    assert f"Database: {work_dir / 'pie.db'}" in result.output
+    assert f"Notes: {work_dir / 'notes'}" in result.output
+    assert f"Reports: {work_dir / 'reports'}" in result.output
     assert not (work_dir / "pie.db").exists()
+
+
+def test_doctor_warns_about_relative_paths(monkeypatch, work_dir):
+    monkeypatch.chdir(work_dir)
+    monkeypatch.setenv("PIE_DATABASE_PATH", "relative-pie.db")
+    monkeypatch.setenv("PIE_NOTES_DIR", "relative-notes")
+    monkeypatch.setenv("PIE_REPORTS_DIR", "relative-reports")
+    monkeypatch.setenv("PIE_BACKUP_DIR", "relative-backups")
+    monkeypatch.setenv("PIE_EXPORT_DIR", "relative-exports")
+    monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "fake")
+
+    result = CliRunner().invoke(cli, ["doctor"])
+
+    assert result.exit_code == 0
+    assert f"Database: {work_dir / 'relative-pie.db'} [relative]" in result.output
+    assert "Relative path detected" in result.output
+    assert "different working directory may create/use a different database" in result.output
+    assert not (work_dir / "relative-pie.db").exists()
 
 
 def test_doctor_ollama_missing_model_fails_cleanly(monkeypatch, work_dir):

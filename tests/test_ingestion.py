@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from personal_intelligence_engine.app.adapters.local_llm_extractor import LocalLLMExtractorError
+from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService
 
 
@@ -92,3 +93,29 @@ class TestIngestion:
         assert structured_rows == []
         assert len(audit_rows) == 1
         assert "Ollama is unavailable" in audit_rows[0]["error_message"]
+
+    def test_add_success_block_rolls_back_partial_database_writes(self, app, monkeypatch):
+        """A post-extraction DB failure does not leave structured/generated partial rows."""
+        original_insert = AuditRepository.insert
+
+        def fail_on_markdown_generated(self, log):
+            if log.action.value == "markdown_generated":
+                raise RuntimeError("simulated markdown audit failure")
+            return original_insert(self, log)
+
+        monkeypatch.setattr(AuditRepository, "insert", fail_on_markdown_generated)
+
+        with pytest.raises(RuntimeError, match="simulated markdown audit failure"):
+            app.add_entry("Eu decidi usar SQLite", auto_approve=True)
+
+        raw_rows = app.db.fetchall("SELECT * FROM raw_entries;")
+        structured_rows = app.db.fetchall("SELECT * FROM structured_entries;")
+        generated_rows = app.db.fetchall("SELECT * FROM generated_files;")
+        audit_rows = app.db.fetchall("SELECT action FROM audit_logs ORDER BY created_at;")
+
+        assert len(raw_rows) == 1
+        assert raw_rows[0]["status"] == "pending"
+        assert structured_rows == []
+        assert generated_rows == []
+        assert [row["action"] for row in audit_rows] == ["entry_created"]
+        assert list((Path(app.config.notes_dir)).glob("*.md")) == []

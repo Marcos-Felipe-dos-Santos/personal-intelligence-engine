@@ -16,6 +16,28 @@ With the default backend, the command should report:
 
 With Ollama enabled, `pie doctor` checks that the local server is reachable and that the configured model is installed. It does not create entries in the database.
 
+`pie doctor` also prints the absolute paths currently used for the SQLite database, notes, reports, backups, and exports. Before real controlled use, confirm that the database path is the one you expect.
+
+## Relative Path Warning
+
+If `pie doctor` reports:
+
+```text
+Relative path detected. Running PIE from a different working directory may create/use a different database.
+```
+
+then one or more configured paths are relative. This is valid, but it can be confusing because running `pie` from another directory may point to a different `pie.db` or output folder. For real data, prefer absolute paths in `.env` when needed:
+
+```env
+PIE_DATABASE_PATH=C:\path\to\private\pie.db
+PIE_NOTES_DIR=C:\path\to\private\notes
+PIE_REPORTS_DIR=C:\path\to\private\reports
+PIE_BACKUP_DIR=C:\path\to\private\backups
+PIE_EXPORT_DIR=C:\path\to\private\exports
+```
+
+`PIE_HOME` is not implemented yet; keep path configuration explicit for now.
+
 ## Default FakeExtractor
 
 `FakeExtractor` remains the default and needs no external service:
