@@ -164,6 +164,8 @@ pie export markdown
 
 Backups are saved in `backups/` and exports in `exports/` (both directories are ignored by Git). These directories are configurable via `PIE_BACKUP_DIR` and `PIE_EXPORT_DIR`.
 
+SQLite backups and JSON exports are full database snapshots and may include soft-deleted entries. Markdown export is a human-readable active-entry summary and excludes soft-deleted entries.
+
 #### Reprocessing Stored Entries
 
 ```bash

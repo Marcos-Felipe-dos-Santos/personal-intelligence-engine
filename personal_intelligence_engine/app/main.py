@@ -504,18 +504,19 @@ class PIEApp:
     def delete_entry(self, structured_entry_id: str) -> dict:
         """Soft-delete an entry by structured entry ID."""
         deleted_at = datetime.now(timezone.utc).isoformat()
-        raw_entry_id = self.entries_repo.soft_delete_entry(structured_entry_id, deleted_at)
-        if raw_entry_id is None:
-            raise ValueError(
-                f"No active entry found for structured entry ID '{structured_entry_id}'."
-            )
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw_entry_id,
-            action=AuditAction.ENTRY_DELETED,
-            actor="user",
-            method="cli",
-            status=AuditStatus.SUCCESS,
-        ))
+        with self.db.transaction():
+            raw_entry_id = self.entries_repo.soft_delete_entry(structured_entry_id, deleted_at)
+            if raw_entry_id is None:
+                raise ValueError(
+                    f"No active entry found for structured entry ID '{structured_entry_id}'."
+                )
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=raw_entry_id,
+                action=AuditAction.ENTRY_DELETED,
+                actor="user",
+                method="cli",
+                status=AuditStatus.SUCCESS,
+            ))
         return {
             "status": "deleted",
             "structured_entry_id": structured_entry_id,
@@ -525,18 +526,19 @@ class PIEApp:
 
     def restore_entry(self, structured_entry_id: str) -> dict:
         """Restore a soft-deleted entry by structured entry ID."""
-        raw_entry_id = self.entries_repo.restore_entry(structured_entry_id)
-        if raw_entry_id is None:
-            raise ValueError(
-                f"No deleted entry found for structured entry ID '{structured_entry_id}'."
-            )
-        self.audit.log(AuditLogCreate(
-            raw_entry_id=raw_entry_id,
-            action=AuditAction.ENTRY_RESTORED,
-            actor="user",
-            method="cli",
-            status=AuditStatus.SUCCESS,
-        ))
+        with self.db.transaction():
+            raw_entry_id = self.entries_repo.restore_entry(structured_entry_id)
+            if raw_entry_id is None:
+                raise ValueError(
+                    f"No deleted entry found for structured entry ID '{structured_entry_id}'."
+                )
+            self.audit.log(AuditLogCreate(
+                raw_entry_id=raw_entry_id,
+                action=AuditAction.ENTRY_RESTORED,
+                actor="user",
+                method="cli",
+                status=AuditStatus.SUCCESS,
+            ))
         return {
             "status": "restored",
             "structured_entry_id": structured_entry_id,
@@ -548,14 +550,15 @@ class PIEApp:
         """Permanently delete entries that were soft-deleted more than N days ago."""
         from datetime import timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
-        count = self.entries_repo.purge_deleted_entries(cutoff)
-        self.audit.log(AuditLogCreate(
-            action=AuditAction.ENTRIES_PURGED,
-            actor="user",
-            method="cli",
-            status=AuditStatus.SUCCESS,
-            error_message=f"Purged {count} entries older than {days_old} days.",
-        ))
+        with self.db.transaction():
+            count = self.entries_repo.purge_deleted_entries(cutoff)
+            self.audit.log(AuditLogCreate(
+                action=AuditAction.ENTRIES_PURGED,
+                actor="user",
+                method="cli",
+                status=AuditStatus.SUCCESS,
+                error_message=f"Purged {count} entries older than {days_old} days.",
+            ))
         return {
             "status": "purged",
             "count": count,
@@ -795,4 +798,3 @@ def check_extractor_backend(
         "prompt_version": None,
         "warnings": [],
     }
-

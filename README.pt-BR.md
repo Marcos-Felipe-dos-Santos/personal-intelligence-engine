@@ -164,6 +164,8 @@ pie export markdown
 
 Os backups são salvos em `backups/` e as exportações em `exports/` (ambos diretórios são ignorados pelo Git). Esses diretórios são configuráveis via `PIE_BACKUP_DIR` e `PIE_EXPORT_DIR`.
 
+Backups SQLite e exportações JSON são snapshots completos do banco e podem incluir entradas soft-deleted. A exportação Markdown é um resumo legível de entradas ativas e exclui entradas soft-deleted.
+
 #### Reprocessando Entradas Armazenadas
 
 ```bash

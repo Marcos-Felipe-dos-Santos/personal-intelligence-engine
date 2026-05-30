@@ -147,6 +147,26 @@ def test_export_markdown_creates_markdown_file(monkeypatch, work_dir):
     assert "..." in content
 
 
+def test_export_markdown_excludes_soft_deleted_entries(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    deleted_text = "Synthetic markdown export deletion marker"
+    structured_id = _add_entry(deleted_text)
+
+    delete_result = CliRunner().invoke(cli, ["entries", "delete", structured_id, "--yes"])
+    assert delete_result.exit_code == 0, delete_result.output
+
+    result = CliRunner().invoke(cli, ["export", "markdown"])
+    assert result.exit_code == 0, result.output
+
+    match = re.search(r"Markdown export created:\s+(.*)", result.output)
+    assert match is not None
+    export_path = Path(match.group(1).strip())
+    content = export_path.read_text(encoding="utf-8")
+
+    assert structured_id not in content
+    assert deleted_text not in content
+
+
 def test_gitignore_contains_backups_and_exports(work_dir):
     # Verify the real gitignore in the workspace has backups/ and exports/
     gitignore_path = Path(__file__).resolve().parents[1] / ".gitignore"

@@ -117,6 +117,8 @@ class BackupExportService:
                 re.content AS raw_content
             FROM structured_entries se
             JOIN raw_entries re ON se.raw_entry_id = re.id
+            WHERE se.deleted_at IS NULL
+              AND re.deleted_at IS NULL
             ORDER BY se.entry_type ASC, se.created_at DESC;
         """
         cursor = conn.execute(query)

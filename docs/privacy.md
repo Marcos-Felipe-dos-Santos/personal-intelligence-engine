@@ -89,7 +89,7 @@ PIE provides granular CLI commands to manage local data deletion, distinguishing
    - Permanently deletes entries that have been in soft-deleted state for more than `<days>` (defaults to 30 days; use `--older-than 0` to purge immediately).
    - This physically removes the `raw_entries`, `structured_entries`, `structured_entry_revisions`, and `generated_files` records from the SQLite database.
    - Corresponding entries in the `audit_logs` are kept to preserve the historic action audit trail, but they are safely orphaned (their `raw_entry_id` is set to `NULL` to comply with SQLite foreign key constraints).
-   - *Note*: Hard-purging removes the database records but does not automatically delete corresponding physical Markdown files in `notes/` or `reports/` if they were already exported. These filesystem artifacts must be cleaned up manually if required.
+   - *Note*: Hard-purging removes the database records but does not automatically delete corresponding physical Markdown files in `notes/` or `reports/`, nor older backups or exports that may already contain the data. These filesystem artifacts must be cleaned up manually if required.
 
 ### Full System Deletion
 

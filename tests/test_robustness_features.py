@@ -12,6 +12,7 @@ from personal_intelligence_engine.app.adapters.local_llm_extractor import (
 from personal_intelligence_engine.app.cli.commands import cli
 from personal_intelligence_engine.app.config import Config
 from personal_intelligence_engine.app.main import PIEApp
+from personal_intelligence_engine.app.repositories.audit_repository import AuditRepository
 
 
 def _configure_temp_env(monkeypatch, work_dir) -> None:
@@ -112,6 +113,129 @@ def test_purge_deleted_entries(monkeypatch, work_dir):
     with sqlite3.connect(work_dir / "pie.db") as conn:
         logs = conn.execute("SELECT action, status FROM audit_logs WHERE action = 'entries_purged';").fetchall()
         assert len(logs) == 1
+
+
+def test_soft_delete_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Eu decidi usar SQLite", "--auto-approve"])
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+
+    def fail_delete_audit(self, log):
+        if log.action.value == "entry_deleted":
+            raise RuntimeError("simulated delete audit failure")
+        return original_insert(self, log)
+
+    original_insert = AuditRepository.insert
+    monkeypatch.setattr(AuditRepository, "insert", fail_delete_audit)
+
+    delete_res = runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+    assert delete_res.exit_code != 0
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT s.deleted_at AS structured_deleted_at, r.deleted_at AS raw_deleted_at
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.id = ?;
+            """,
+            (sid,),
+        ).fetchone()
+        logs = conn.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_deleted';"
+        ).fetchone()[0]
+
+    assert row["structured_deleted_at"] is None
+    assert row["raw_deleted_at"] is None
+    assert logs == 0
+
+
+def test_restore_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Eu decidi usar SQLite", "--auto-approve"])
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+    delete_res = runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+    assert delete_res.exit_code == 0
+
+    def fail_restore_audit(self, log):
+        if log.action.value == "entry_restored":
+            raise RuntimeError("simulated restore audit failure")
+        return original_insert(self, log)
+
+    original_insert = AuditRepository.insert
+    monkeypatch.setattr(AuditRepository, "insert", fail_restore_audit)
+
+    restore_res = runner.invoke(cli, ["entries", "restore", sid])
+    assert restore_res.exit_code != 0
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT s.deleted_at AS structured_deleted_at, r.deleted_at AS raw_deleted_at
+            FROM structured_entries s
+            JOIN raw_entries r ON r.id = s.raw_entry_id
+            WHERE s.id = ?;
+            """,
+            (sid,),
+        ).fetchone()
+        logs = conn.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_restored';"
+        ).fetchone()[0]
+
+    assert row["structured_deleted_at"] is not None
+    assert row["raw_deleted_at"] is not None
+    assert logs == 0
+
+
+def test_purge_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Eu decidi usar SQLite", "--auto-approve"])
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        raw_id = conn.execute(
+            "SELECT raw_entry_id FROM structured_entries WHERE id = ?;",
+            (sid,),
+        ).fetchone()[0]
+
+    delete_res = runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+    assert delete_res.exit_code == 0
+
+    def fail_purge_audit(self, log):
+        if log.action.value == "entries_purged":
+            raise RuntimeError("simulated purge audit failure")
+        return original_insert(self, log)
+
+    original_insert = AuditRepository.insert
+    monkeypatch.setattr(AuditRepository, "insert", fail_purge_audit)
+
+    purge_res = runner.invoke(cli, ["entries", "purge", "--older-than", "0", "--yes"])
+    assert purge_res.exit_code != 0
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        structured_count = conn.execute(
+            "SELECT COUNT(*) FROM structured_entries WHERE id = ?;",
+            (sid,),
+        ).fetchone()[0]
+        raw_count = conn.execute(
+            "SELECT COUNT(*) FROM raw_entries WHERE id = ?;",
+            (raw_id,),
+        ).fetchone()[0]
+        purge_logs = conn.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entries_purged';"
+        ).fetchone()[0]
+
+    assert structured_count == 1
+    assert raw_count == 1
+    assert purge_logs == 0
 
 
 # 2. Database migrations pending and applied introspection tests

@@ -156,6 +156,7 @@ pie export markdown
 - Run `pie backup create` before exporting data.
 - Keep at least one backup from before the seven-day test.
 - Delete old backups if they are no longer needed and contain sensitive data.
+- After purging entries, review old backups, exports, notes, and reports because they may still contain data that no longer exists in the live database.
 
 ## Handling Poor Extraction Without Review Edit
 
