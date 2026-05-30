@@ -63,10 +63,11 @@ class TestFakeExtractor:
             ("I decided to use SQLite for local storage", EntryType.DECISION),
             ("I had an idea for the extraction pipeline", EntryType.IDEA),
             ("There is a problem with the migration test", EntryType.PROBLEM),
-            ("I need to review the schema tomorrow", EntryType.CANDIDATE_TASK),
+            ("I need to configure the schema tomorrow", EntryType.CANDIDATE_TASK),
             ("I noticed the report could mention raw IDs", EntryType.INSIGHT),
             ("Save this reference article for SQLite constraints", EntryType.REFERENCE),
             ("Weekly review of synthetic extraction quality", EntryType.REVIEW),
+            ("I need to review the schema tomorrow", EntryType.REVIEW),
         ],
     )
     def test_english_keywords(self, extractor, text, entry_type):

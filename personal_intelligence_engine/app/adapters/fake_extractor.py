@@ -41,7 +41,7 @@ class FakeExtractor:
         (r"\b(?:decidi|decided)\b", EntryType.DECISION, 0.60),
         (r"\b(?:ideia|idea)\b", EntryType.IDEA, 0.60),
         (r"\b(?:problema|erro|bloqueio|problem|error|blocker)\b", EntryType.PROBLEM, 0.60),
-        (r"\b(?:tarefa|preciso|fazer|task|need to|todo)\b", EntryType.CANDIDATE_TASK, 0.60),
+        (r"\b(?:tarefa|preciso|fazer|task|need to(?!\s+review\b)|todo)\b", EntryType.CANDIDATE_TASK, 0.60),
         (r"\b(?:insight|percebi|descobri|noticed|realized|discovered)\b", EntryType.INSIGHT, 0.60),
         (r"\b(?:referência|link|artigo|reference|article)\b", EntryType.REFERENCE, 0.55),
         (r"\b(?:revisão|review)\b", EntryType.REVIEW, 0.55),
