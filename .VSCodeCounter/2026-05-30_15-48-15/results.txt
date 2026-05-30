@@ -1,0 +1,136 @@
+Date : 2026-05-30 15:48:15
+Directory : e:\projetos\pie
+Total : 88 files,  10852 codes, 1397 comments, 3072 blanks, all 15321 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         61 |      8,153 |      1,382 |      2,214 |     11,749 |
+| Markdown |         18 |      2,212 |          0 |        821 |      3,033 |
+| JSON     |          3 |        232 |          0 |          3 |        235 |
+| MS SQL   |          5 |        223 |         15 |         23 |        261 |
+| YAML     |          1 |         32 |          0 |         11 |         43 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                  | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                     |         88 |     10,852 |      1,397 |      3,072 |     15,321 |
+| . (Files)                                                                             |          2 |        454 |          0 |        166 |        620 |
+| .github                                                                               |          1 |         32 |          0 |         11 |         43 |
+| .github\workflows                                                                     |          1 |         32 |          0 |         11 |         43 |
+| docs                                                                                  |         15 |      1,727 |          0 |        648 |      2,375 |
+| examples                                                                              |          1 |         33 |          0 |          1 |         34 |
+| migrations                                                                            |          5 |        223 |         15 |         23 |        261 |
+| personal_intelligence_engine                                                          |         33 |      3,737 |        847 |        785 |      5,369 |
+| personal_intelligence_engine (Files)                                                  |          1 |          1 |          1 |          2 |          4 |
+| personal_intelligence_engine\app                                                      |         32 |      3,736 |        846 |        783 |      5,365 |
+| personal_intelligence_engine\app (Files)                                              |          3 |        738 |        112 |         97 |        947 |
+| personal_intelligence_engine\app\adapters                                             |          4 |        440 |         80 |         94 |        614 |
+| personal_intelligence_engine\app\cli                                                  |          2 |        721 |        105 |        123 |        949 |
+| personal_intelligence_engine\app\domain                                               |          3 |        264 |         44 |         92 |        400 |
+| personal_intelligence_engine\app\evaluation                                           |          4 |        306 |         29 |         96 |        431 |
+| personal_intelligence_engine\app\prompts                                              |          1 |         31 |          0 |          7 |         38 |
+| personal_intelligence_engine\app\repositories                                         |          6 |        496 |        318 |         90 |        904 |
+| personal_intelligence_engine\app\services                                             |          9 |        740 |        158 |        184 |      1,082 |
+| tests                                                                                 |         31 |      4,646 |        535 |      1,438 |      6,619 |
+| tests (Files)                                                                         |         29 |      4,447 |        535 |      1,436 |      6,418 |
+| tests\fixtures                                                                        |          2 |        199 |          0 |          2 |        201 |
++---------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                              | language | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| e:\projetos\pie\.github\workflows\ci.yml                                              | YAML     |         32 |          0 |         11 |         43 |
+| e:\projetos\pie\README.md                                                             | Markdown |        227 |          0 |         83 |        310 |
+| e:\projetos\pie\README.pt-BR.md                                                       | Markdown |        227 |          0 |         83 |        310 |
+| e:\projetos\pie\docs\architecture.md                                                  | Markdown |         93 |          0 |         18 |        111 |
+| e:\projetos\pie\docs\assistant_architecture.md                                        | Markdown |        100 |          0 |         43 |        143 |
+| e:\projetos\pie\docs\core_v1_gap_analysis.md                                          | Markdown |        100 |          0 |         36 |        136 |
+| e:\projetos\pie\docs\current_state.md                                                 | Markdown |        108 |          0 |         29 |        137 |
+| e:\projetos\pie\docs\data_model.md                                                    | Markdown |        112 |          0 |         28 |        140 |
+| e:\projetos\pie\docs\git_publication_checklist.md                                     | Markdown |         44 |          0 |         17 |         61 |
+| e:\projetos\pie\docs\human_review_design.md                                           | Markdown |        182 |          0 |         84 |        266 |
+| e:\projetos\pie\docs\phase_2c_issues.md                                               | Markdown |        198 |          0 |         97 |        295 |
+| e:\projetos\pie\docs\privacy.md                                                       | Markdown |         72 |          0 |         33 |        105 |
+| e:\projetos\pie\docs\review_edit_design.md                                            | Markdown |        173 |          0 |         70 |        243 |
+| e:\projetos\pie\docs\roadmap.md                                                       | Markdown |         86 |          0 |         33 |        119 |
+| e:\projetos\pie\docs\simulated_usage_report.md                                        | Markdown |        202 |          0 |         51 |        253 |
+| e:\projetos\pie\docs\troubleshooting.md                                               | Markdown |         60 |          0 |         28 |         88 |
+| e:\projetos\pie\docs\usage_playbook.md                                                | Markdown |        152 |          0 |         60 |        212 |
+| e:\projetos\pie\docs\vision.md                                                        | Markdown |         45 |          0 |         21 |         66 |
+| e:\projetos\pie\examples\sample_entries.json                                          | JSON     |         33 |          0 |          1 |         34 |
+| e:\projetos\pie\migrations\001_initial_schema.sql                                     | MS SQL   |         85 |          3 |          7 |         95 |
+| e:\projetos\pie\migrations\002_add_review_audit_actions.sql                           | MS SQL   |         60 |          4 |          6 |         70 |
+| e:\projetos\pie\migrations\003_create_structured_entry_revisions.sql                  | MS SQL   |         13 |          2 |          2 |         17 |
+| e:\projetos\pie\migrations\004_add_soft_delete.sql                                    | MS SQL   |          2 |          2 |          2 |          6 |
+| e:\projetos\pie\migrations\005_add_delete_audit_actions.sql                           | MS SQL   |         63 |          4 |          6 |         73 |
+| e:\projetos\pie\personal_intelligence_engine\__init__.py                              | Python   |          1 |          1 |          2 |          4 |
+| e:\projetos\pie\personal_intelligence_engine\app\__init__.py                          | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\adapters\__init__.py                 | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\adapters\fake_extractor.py           | Python   |         61 |         39 |         12 |        112 |
+| e:\projetos\pie\personal_intelligence_engine\app\adapters\local_llm_extractor.py      | Python   |        304 |         17 |         58 |        379 |
+| e:\projetos\pie\personal_intelligence_engine\app\adapters\markdown_writer.py          | Python   |         75 |         23 |         23 |        121 |
+| e:\projetos\pie\personal_intelligence_engine\app\cli\__init__.py                      | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\cli\commands.py                      | Python   |        721 |        104 |        122 |        947 |
+| e:\projetos\pie\personal_intelligence_engine\app\config.py                            | Python   |        115 |          8 |         13 |        136 |
+| e:\projetos\pie\personal_intelligence_engine\app\domain\__init__.py                   | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\domain\schemas.py                    | Python   |        224 |         36 |         72 |        332 |
+| e:\projetos\pie\personal_intelligence_engine\app\domain\types.py                      | Python   |         40 |          7 |         19 |         66 |
+| e:\projetos\pie\personal_intelligence_engine\app\evaluation\__init__.py               | Python   |         23 |          1 |          3 |         27 |
+| e:\projetos\pie\personal_intelligence_engine\app\evaluation\report.py                 | Python   |         77 |          3 |         17 |         97 |
+| e:\projetos\pie\personal_intelligence_engine\app\evaluation\runner.py                 | Python   |        103 |         10 |         30 |        143 |
+| e:\projetos\pie\personal_intelligence_engine\app\evaluation\scoring.py                | Python   |        103 |         15 |         46 |        164 |
+| e:\projetos\pie\personal_intelligence_engine\app\main.py                              | Python   |        623 |        103 |         83 |        809 |
+| e:\projetos\pie\personal_intelligence_engine\app\prompts\extraction_prompt.md         | Markdown |         31 |          0 |          7 |         38 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\__init__.py             | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\audit_repository.py     | Python   |         34 |         10 |          9 |         53 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\database.py             | Python   |        124 |         43 |         37 |        204 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\entries_repository.py   | Python   |        278 |        241 |         27 |        546 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\reports_repository.py   | Python   |         29 |          9 |          8 |         46 |
+| e:\projetos\pie\personal_intelligence_engine\app\repositories\revisions_repository.py | Python   |         31 |         14 |          8 |         53 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\__init__.py                 | Python   |          0 |          1 |          1 |          2 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\audit_service.py            | Python   |         23 |         11 |          8 |         42 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\backup_export_service.py    | Python   |        121 |         18 |         36 |        175 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\extraction_service.py       | Python   |         12 |         16 |         11 |         39 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\ingestion_service.py        | Python   |         17 |         10 |         10 |         37 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\markdown_service.py         | Python   |         20 |         11 |          7 |         38 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\report_service.py           | Python   |        335 |         58 |         71 |        464 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\reprocess_service.py        | Python   |        180 |         20 |         31 |        231 |
+| e:\projetos\pie\personal_intelligence_engine\app\services\validation_service.py       | Python   |         32 |         13 |          9 |         54 |
+| e:\projetos\pie\tests\conftest.py                                                     | Python   |         24 |          4 |          9 |         37 |
+| e:\projetos\pie\tests\fixtures\extraction_quality_cases.json                          | JSON     |        137 |          0 |          1 |        138 |
+| e:\projetos\pie\tests\fixtures\prompt_regression_cases.json                           | JSON     |         62 |          0 |          1 |         63 |
+| e:\projetos\pie\tests\test_add_overrides.py                                           | Python   |        302 |         61 |         87 |        450 |
+| e:\projetos\pie\tests\test_audit_log.py                                               | Python   |        129 |         13 |         29 |        171 |
+| e:\projetos\pie\tests\test_backup_export_cli.py                                       | Python   |        149 |         25 |         59 |        233 |
+| e:\projetos\pie\tests\test_cli.py                                                     | Python   |         69 |          2 |         32 |        103 |
+| e:\projetos\pie\tests\test_config.py                                                  | Python   |         16 |          1 |          6 |         23 |
+| e:\projetos\pie\tests\test_daily_report.py                                            | Python   |        138 |         18 |         40 |        196 |
+| e:\projetos\pie\tests\test_database_schema.py                                         | Python   |        200 |         36 |         36 |        272 |
+| e:\projetos\pie\tests\test_entries_cli.py                                             | Python   |        199 |         80 |        121 |        400 |
+| e:\projetos\pie\tests\test_extraction_quality_cli.py                                  | Python   |         41 |          1 |         19 |         61 |
+| e:\projetos\pie\tests\test_extraction_quality_fixtures.py                             | Python   |         70 |          1 |         29 |        100 |
+| e:\projetos\pie\tests\test_extraction_quality_report.py                               | Python   |         74 |          1 |         14 |         89 |
+| e:\projetos\pie\tests\test_extraction_quality_runner.py                               | Python   |         86 |          2 |         22 |        110 |
+| e:\projetos\pie\tests\test_extraction_quality_scoring.py                              | Python   |         79 |          1 |         32 |        112 |
+| e:\projetos\pie\tests\test_extraction_service.py                                      | Python   |         17 |          1 |          8 |         26 |
+| e:\projetos\pie\tests\test_extractor_selection.py                                     | Python   |         79 |          1 |         34 |        114 |
+| e:\projetos\pie\tests\test_fake_extractor.py                                          | Python   |         54 |         11 |         18 |         83 |
+| e:\projetos\pie\tests\test_ingestion.py                                               | Python   |         81 |         12 |         29 |        122 |
+| e:\projetos\pie\tests\test_local_llm_extractor.py                                     | Python   |        150 |          1 |         59 |        210 |
+| e:\projetos\pie\tests\test_main_static.py                                             | Python   |          4 |          1 |          5 |         10 |
+| e:\projetos\pie\tests\test_markdown_generation.py                                     | Python   |         60 |         11 |         19 |         90 |
+| e:\projetos\pie\tests\test_prompt_contract.py                                         | Python   |         25 |          1 |         10 |         36 |
+| e:\projetos\pie\tests\test_reprocess_cli.py                                           | Python   |        505 |         34 |        151 |        690 |
+| e:\projetos\pie\tests\test_review_cli.py                                              | Python   |        389 |         21 |        157 |        567 |
+| e:\projetos\pie\tests\test_robustness_features.py                                     | Python   |        258 |         37 |         80 |        375 |
+| e:\projetos\pie\tests\test_schema.py                                                  | Python   |        113 |          7 |         26 |        146 |
+| e:\projetos\pie\tests\test_smoke_simulation.py                                        | Python   |        603 |        102 |        198 |        903 |
+| e:\projetos\pie\tests\test_structured_entry_revisions.py                              | Python   |         90 |          1 |         21 |        112 |
+| e:\projetos\pie\tests\test_weekly_project_reports.py                                  | Python   |        443 |         48 |         86 |        577 |
+| Total                                                                                 |          |     10,852 |      1,397 |      3,072 |     15,321 |
++---------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

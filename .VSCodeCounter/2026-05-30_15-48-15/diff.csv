@@ -1,0 +1,39 @@
+"filename", "language", "Markdown", "Python", "MS SQL", "comment", "blank", "total"
+"e:\projetos\pie\README.md", "Markdown", 1, 0, 0, 0, 1, 2
+"e:\projetos\pie\README.pt-BR.md", "Markdown", 1, 0, 0, 0, 1, 2
+"e:\projetos\pie\docs\core_v1_gap_analysis.md", "Markdown", 6, 0, 0, 0, 2, 8
+"e:\projetos\pie\docs\current_state.md", "Markdown", 5, 0, 0, 0, 0, 5
+"e:\projetos\pie\docs\data_model.md", "Markdown", 19, 0, 0, 0, 2, 21
+"e:\projetos\pie\docs\privacy.md", "Markdown", 15, 0, 0, 0, 6, 21
+"e:\projetos\pie\docs\roadmap.md", "Markdown", 4, 0, 0, 0, 0, 4
+"e:\projetos\pie\docs\simulated_usage_report.md", "Markdown", 202, 0, 0, 0, 51, 253
+"e:\projetos\pie\docs\troubleshooting.md", "Markdown", 15, 0, 0, 0, 7, 22
+"e:\projetos\pie\docs\usage_playbook.md", "Markdown", 18, 0, 0, 0, 9, 27
+"e:\projetos\pie\migrations\004_add_soft_delete.sql", "MS SQL", 0, 0, 2, 2, 2, 6
+"e:\projetos\pie\migrations\005_add_delete_audit_actions.sql", "MS SQL", 0, 0, 63, 4, 6, 73
+"e:\projetos\pie\personal_intelligence_engine\app\adapters\fake_extractor.py", "Python", 0, 10, 0, 5, 0, 15
+"e:\projetos\pie\personal_intelligence_engine\app\adapters\local_llm_extractor.py", "Python", 0, 33, 0, 2, 5, 40
+"e:\projetos\pie\personal_intelligence_engine\app\cli\commands.py", "Python", 0, 159, 0, 6, 21, 186
+"e:\projetos\pie\personal_intelligence_engine\app\config.py", "Python", 0, 4, 0, 0, 0, 4
+"e:\projetos\pie\personal_intelligence_engine\app\domain\schemas.py", "Python", 0, 6, 0, 0, 1, 7
+"e:\projetos\pie\personal_intelligence_engine\app\domain\types.py", "Python", 0, 3, 0, 0, 0, 3
+"e:\projetos\pie\personal_intelligence_engine\app\main.py", "Python", 0, 129, 0, 26, 11, 166
+"e:\projetos\pie\personal_intelligence_engine\app\repositories\database.py", "Python", 0, 33, 0, 18, 13, 64
+"e:\projetos\pie\personal_intelligence_engine\app\repositories\entries_repository.py", "Python", 0, 22, 0, 96, 3, 121
+"e:\projetos\pie\personal_intelligence_engine\app\services\backup_export_service.py", "Python", 0, 2, 0, 0, 0, 2
+"e:\projetos\pie\personal_intelligence_engine\app\services\reprocess_service.py", "Python", 0, 7, 0, 0, 0, 7
+"e:\projetos\pie\tests\test_add_overrides.py", "Python", 0, 302, 0, 61, 87, 450
+"e:\projetos\pie\tests\test_audit_log.py", "Python", 0, 0, 0, 0, 1, 1
+"e:\projetos\pie\tests\test_backup_export_cli.py", "Python", 0, 14, 0, 0, 6, 20
+"e:\projetos\pie\tests\test_cli.py", "Python", 0, 17, 0, 0, 4, 21
+"e:\projetos\pie\tests\test_config.py", "Python", 0, 16, 0, 1, 6, 23
+"e:\projetos\pie\tests\test_entries_cli.py", "Python", 0, 3, 0, 0, 0, 3
+"e:\projetos\pie\tests\test_fake_extractor.py", "Python", 0, 0, 0, 0, 1, 1
+"e:\projetos\pie\tests\test_ingestion.py", "Python", 0, 20, 0, 1, 6, 27
+"e:\projetos\pie\tests\test_main_static.py", "Python", 0, 4, 0, 1, 5, 10
+"e:\projetos\pie\tests\test_markdown_generation.py", "Python", 0, 13, 0, 0, 4, 17
+"e:\projetos\pie\tests\test_reprocess_cli.py", "Python", 0, 30, 0, 0, 23, 53
+"e:\projetos\pie\tests\test_review_cli.py", "Python", 0, 36, 0, 0, 12, 48
+"e:\projetos\pie\tests\test_robustness_features.py", "Python", 0, 258, 0, 37, 80, 375
+"e:\projetos\pie\tests\test_smoke_simulation.py", "Python", 0, 9, 0, -10, 1, 0
+"Total", "-", 286, 1130, 65, 250, 377, 2108
