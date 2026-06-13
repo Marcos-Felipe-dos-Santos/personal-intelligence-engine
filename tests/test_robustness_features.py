@@ -60,7 +60,9 @@ def test_soft_delete_lifecycle(monkeypatch, work_dir):
     # 6. Verify audit log entry_deleted is recorded
     with sqlite3.connect(work_dir / "pie.db") as conn:
         conn.row_factory = sqlite3.Row
-        logs = conn.execute("SELECT action, actor, method, status FROM audit_logs WHERE action = 'entry_deleted';").fetchall()
+        logs = conn.execute(
+            "SELECT action, actor, method, status FROM audit_logs WHERE action = 'entry_deleted';"
+        ).fetchall()
         assert len(logs) == 1
         assert logs[0]["action"] == "entry_deleted"
         assert logs[0]["actor"] == "user"
@@ -88,8 +90,12 @@ def test_purge_deleted_entries(monkeypatch, work_dir):
     runner = CliRunner()
 
     # Add two entries
-    sid1 = re.search(r"Structured ID:\s+([0-9a-f-]+)", runner.invoke(cli, ["add", "Decidi usar SQLite", "--auto-approve"]).output).group(1)
-    sid2 = re.search(r"Structured ID:\s+([0-9a-f-]+)", runner.invoke(cli, ["add", "Tive uma ideia", "--auto-approve"]).output).group(1)
+    sid1 = re.search(
+        r"Structured ID:\s+([0-9a-f-]+)", runner.invoke(cli, ["add", "Decidi usar SQLite", "--auto-approve"]).output
+    ).group(1)
+    sid2 = re.search(
+        r"Structured ID:\s+([0-9a-f-]+)", runner.invoke(cli, ["add", "Tive uma ideia", "--auto-approve"]).output
+    ).group(1)
 
     with sqlite3.connect(work_dir / "pie.db") as conn:
         raw_id = conn.execute("SELECT raw_entry_id FROM structured_entries WHERE id = ?;", (sid1,)).fetchone()[0]
@@ -144,9 +150,7 @@ def test_soft_delete_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
             """,
             (sid,),
         ).fetchone()
-        logs = conn.execute(
-            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_deleted';"
-        ).fetchone()[0]
+        logs = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_deleted';").fetchone()[0]
 
     assert row["structured_deleted_at"] is None
     assert row["raw_deleted_at"] is None
@@ -184,9 +188,7 @@ def test_restore_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
             """,
             (sid,),
         ).fetchone()
-        logs = conn.execute(
-            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_restored';"
-        ).fetchone()[0]
+        logs = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE action = 'entry_restored';").fetchone()[0]
 
     assert row["structured_deleted_at"] is not None
     assert row["raw_deleted_at"] is not None
@@ -229,9 +231,7 @@ def test_purge_rolls_back_if_audit_log_fails(monkeypatch, work_dir):
             "SELECT COUNT(*) FROM raw_entries WHERE id = ?;",
             (raw_id,),
         ).fetchone()[0]
-        purge_logs = conn.execute(
-            "SELECT COUNT(*) FROM audit_logs WHERE action = 'entries_purged';"
-        ).fetchone()[0]
+        purge_logs = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE action = 'entries_purged';").fetchone()[0]
 
     assert structured_count == 1
     assert raw_count == 1
@@ -290,6 +290,7 @@ def test_pie_doctor_shows_migrations(monkeypatch, work_dir):
 class MockSuccessOllamaClient:
     def list_models(self, *, base_url, timeout_seconds):
         return ["test-model"]
+
     def generate(self, *, base_url, model, prompt, timeout_seconds):
         return {
             "response": '{"entry_type": "decision", "summary": "Valid test decision.", "confidence": 0.85, "tags": ["test"], "extra": {}}'
@@ -299,6 +300,7 @@ class MockSuccessOllamaClient:
 class MockInvalidJSONOllamaClient:
     def list_models(self, *, base_url, timeout_seconds):
         return ["test-model"]
+
     def generate(self, *, base_url, model, prompt, timeout_seconds):
         return {"response": "invalid json response"}
 
@@ -306,11 +308,11 @@ class MockInvalidJSONOllamaClient:
 class MockSuspiciousConfidenceOllamaClient:
     def list_models(self, *, base_url, timeout_seconds):
         return ["test-model"]
+
     def generate(self, *, base_url, model, prompt, timeout_seconds):
         return {
             "response": '{"entry_type": "decision", "summary": "Valid summary.", "confidence": 1.0, "tags": [], "extra": {}}'
         }
-
 
 
 def test_deep_health_check_success():
@@ -349,6 +351,116 @@ def test_deep_health_check_suspicious_confidence():
     assert any("Suspicious confidence" in w for w in health.warnings)
 
 
+def test_purge_removes_md_from_disk(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Decidi usar SQLite para purge test", "--auto-approve"])
+    assert add_res.exit_code == 0
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        raw_id = conn.execute("SELECT raw_entry_id FROM structured_entries WHERE id = ?;", (sid,)).fetchone()[0]
+        row = conn.execute("SELECT path FROM generated_files WHERE raw_entry_id = ?;", (raw_id,)).fetchone()
+
+    note_path = Path(row[0])
+    assert note_path.exists()  # sanity: .md was created
+
+    runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+
+    purge_res = runner.invoke(cli, ["entries", "purge", "--older-than", "0", "--yes"])
+    assert purge_res.exit_code == 0
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM raw_entries WHERE id = ?;", (raw_id,)).fetchone()[0] == 0
+
+    assert not note_path.exists()
+
+
+def test_purge_missing_md_does_not_break_purge(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Entrada para teste de purge sem md", "--auto-approve"])
+    assert add_res.exit_code == 0
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        raw_id = conn.execute("SELECT raw_entry_id FROM structured_entries WHERE id = ?;", (sid,)).fetchone()[0]
+        row = conn.execute("SELECT path FROM generated_files WHERE raw_entry_id = ?;", (raw_id,)).fetchone()
+
+    Path(row[0]).unlink()  # remove manually before purge
+
+    runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+
+    purge_res = runner.invoke(cli, ["entries", "purge", "--older-than", "0", "--yes"])
+    assert purge_res.exit_code == 0
+    assert "Permanently deleted 1 entries" in purge_res.output
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM raw_entries WHERE id = ?;", (raw_id,)).fetchone()[0] == 0
+
+
+def test_purge_removes_multiple_mds(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    sids = []
+    note_paths = []
+    for text in ["Entrada A para purge multiplo", "Entrada B para purge multiplo"]:
+        add_res = runner.invoke(cli, ["add", text, "--auto-approve"])
+        assert add_res.exit_code == 0
+        sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+        sids.append(sid)
+
+        with sqlite3.connect(work_dir / "pie.db") as conn:
+            raw_id = conn.execute("SELECT raw_entry_id FROM structured_entries WHERE id = ?;", (sid,)).fetchone()[0]
+            row = conn.execute("SELECT path FROM generated_files WHERE raw_entry_id = ?;", (raw_id,)).fetchone()
+        note_paths.append(Path(row[0]))
+
+    for sid in sids:
+        runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+
+    purge_res = runner.invoke(cli, ["entries", "purge", "--older-than", "0", "--yes"])
+    assert purge_res.exit_code == 0
+    assert "Permanently deleted 2 entries" in purge_res.output
+
+    for note_path in note_paths:
+        assert not note_path.exists()
+
+
+def test_purge_unlink_failure_is_reported(monkeypatch, work_dir):
+    _configure_temp_env(monkeypatch, work_dir)
+    runner = CliRunner()
+
+    add_res = runner.invoke(cli, ["add", "Entrada para teste de falha de unlink", "--auto-approve"])
+    assert add_res.exit_code == 0
+    sid = re.search(r"Structured ID:\s+([0-9a-f-]+)", add_res.output).group(1)
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        raw_id = conn.execute("SELECT raw_entry_id FROM structured_entries WHERE id = ?;", (sid,)).fetchone()[0]
+
+    runner.invoke(cli, ["entries", "delete", sid, "--yes"])
+
+    original_unlink = Path.unlink
+
+    def raise_permission_error(self, missing_ok=False):
+        raise PermissionError("simulated permission denied")
+
+    monkeypatch.setattr(Path, "unlink", raise_permission_error)
+
+    purge_res = runner.invoke(cli, ["entries", "purge", "--older-than", "0", "--yes"])
+
+    monkeypatch.setattr(Path, "unlink", original_unlink)
+
+    assert purge_res.exit_code == 0
+    assert "Permanently deleted 1 entries" in purge_res.output
+    assert "1 file(s) could not be removed" in purge_res.output
+
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM raw_entries WHERE id = ?;", (raw_id,)).fetchone()[0] == 0
+
+
 def test_pie_doctor_deep_propagates_warnings(monkeypatch, work_dir):
     _configure_temp_env(monkeypatch, work_dir)
     monkeypatch.setenv("PIE_EXTRACTOR_BACKEND", "ollama")
@@ -362,7 +474,7 @@ def test_pie_doctor_deep_propagates_warnings(monkeypatch, work_dir):
             "message": "Warnings present.",
             "model_name": "test-model",
             "prompt_version": "v1",
-            "warnings": ["Suspicious confidence: 1.5"]
+            "warnings": ["Suspicious confidence: 1.5"],
         }
 
     monkeypatch.setattr("personal_intelligence_engine.app.cli.commands.check_extractor_backend", mock_check)

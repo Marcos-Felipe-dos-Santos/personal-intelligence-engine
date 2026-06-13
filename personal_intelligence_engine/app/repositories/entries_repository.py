@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 from personal_intelligence_engine.app.domain.schemas import (
     GeneratedFile,
     RawEntry,
     StructuredEntry,
 )
 from personal_intelligence_engine.app.repositories.database import Database
+
+_log = logging.getLogger(__name__)
 
 
 class EntriesRepository:
@@ -483,11 +488,12 @@ class EntriesRepository:
         self._db.commit()
         return raw_entry_id
 
-    def purge_deleted_entries(self, before_date: str) -> int:
+    def purge_deleted_entries(self, before_date: str) -> tuple[int, list[str]]:
         """Permanently delete entries that were soft-deleted before the given date.
 
         Deletes structured_entries, then raw_entries (respecting FK order).
-        Returns the number of raw entries purged.
+        Returns (count_purged, failed_filenames) where failed_filenames are names
+        of generated files that could not be removed from disk (best-effort).
         """
         # Find raw entry IDs to purge
         rows = self._db.fetchall(
@@ -502,9 +508,23 @@ class EntriesRepository:
         raw_ids = [row["id"] for row in rows]
 
         if not raw_ids:
-            return 0
+            return 0, []
 
         placeholders = ",".join("?" for _ in raw_ids)
+
+        # Collect .md paths before removing DB records (records are the only pointer to them)
+        path_rows = self._db.fetchall(
+            f"SELECT path FROM generated_files WHERE raw_entry_id IN ({placeholders});",
+            tuple(raw_ids),
+        )
+        failed_filenames: list[str] = []
+        for row in path_rows:
+            file_path = Path(row["path"])
+            try:
+                file_path.unlink(missing_ok=True)
+            except OSError:
+                _log.warning("Could not remove generated file during purge: %s", file_path.name)
+                failed_filenames.append(file_path.name)
 
         # Delete structured_entry_revisions that reference these structured entries
         self._db.execute(
@@ -542,4 +562,4 @@ class EntriesRepository:
         )
 
         self._db.commit()
-        return len(raw_ids)
+        return len(raw_ids), failed_filenames

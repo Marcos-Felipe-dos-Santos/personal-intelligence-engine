@@ -808,6 +808,12 @@ def entries_purge(days_old: int, force: bool) -> None:
         app = PIEApp()
         result = app.purge_deleted(days_old=days_old)
         click.echo(f"[OK] {result['message']}")
+        failures = result.get("unlink_failures", [])
+        if failures:
+            click.echo(
+                f"[!] {len(failures)} file(s) could not be removed from disk and must be deleted manually: "
+                + ", ".join(failures)
+            )
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
     finally:
