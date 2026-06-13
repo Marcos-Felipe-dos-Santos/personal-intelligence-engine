@@ -34,35 +34,18 @@ class Config:
         local_timezone: str | None = None,
         backup_dir: str | Path | None = None,
         export_dir: str | Path | None = None,
+        allow_remote_ollama: bool | str | None = None,
     ) -> None:
-        self.database_path = Path(
-            database_path or os.getenv("PIE_DATABASE_PATH", "pie.db")
-        )
-        self.notes_dir = Path(
-            notes_dir or os.getenv("PIE_NOTES_DIR", "notes")
-        )
-        self.reports_dir = Path(
-            reports_dir or os.getenv("PIE_REPORTS_DIR", "reports")
-        )
-        self.migrations_dir = Path(
-            migrations_dir or _project_root / "migrations"
-        )
-        self.backup_dir = Path(
-            backup_dir or os.getenv("PIE_BACKUP_DIR", "backups")
-        )
-        self.export_dir = Path(
-            export_dir or os.getenv("PIE_EXPORT_DIR", "exports")
-        )
+        self.database_path = Path(database_path or os.getenv("PIE_DATABASE_PATH", "pie.db"))
+        self.notes_dir = Path(notes_dir or os.getenv("PIE_NOTES_DIR", "notes"))
+        self.reports_dir = Path(reports_dir or os.getenv("PIE_REPORTS_DIR", "reports"))
+        self.migrations_dir = Path(migrations_dir or _project_root / "migrations")
+        self.backup_dir = Path(backup_dir or os.getenv("PIE_BACKUP_DIR", "backups"))
+        self.export_dir = Path(export_dir or os.getenv("PIE_EXPORT_DIR", "exports"))
         self.log_level = log_level or os.getenv("PIE_LOG_LEVEL", "INFO")
-        self.extractor_backend = (
-            extractor_backend or os.getenv("PIE_EXTRACTOR_BACKEND", "fake")
-        ).strip().lower()
-        self.ollama_base_url = (
-            ollama_base_url or os.getenv("PIE_OLLAMA_BASE_URL", "http://localhost:11434")
-        ).strip()
-        self.ollama_model = (
-            ollama_model if ollama_model is not None else os.getenv("PIE_OLLAMA_MODEL", "")
-        ).strip()
+        self.extractor_backend = (extractor_backend or os.getenv("PIE_EXTRACTOR_BACKEND", "fake")).strip().lower()
+        self.ollama_base_url = (ollama_base_url or os.getenv("PIE_OLLAMA_BASE_URL", "http://localhost:11434")).strip()
+        self.ollama_model = (ollama_model if ollama_model is not None else os.getenv("PIE_OLLAMA_MODEL", "")).strip()
         self.llm_timeout_seconds = self._parse_timeout(
             llm_timeout_seconds if llm_timeout_seconds is not None else os.getenv("PIE_LLM_TIMEOUT_SECONDS", "30")
         )
@@ -80,6 +63,9 @@ class Config:
         )
         self.local_timezone = self._validate_timezone(
             local_timezone or os.getenv("PIE_LOCAL_TIMEZONE", "America/Sao_Paulo")
+        )
+        self.allow_remote_ollama = self._parse_bool(
+            allow_remote_ollama if allow_remote_ollama is not None else os.getenv("PIE_ALLOW_REMOTE_OLLAMA", "false")
         )
 
     def ensure_dirs(self) -> None:
@@ -125,11 +111,20 @@ class Config:
         return parsed
 
     @staticmethod
+    def _parse_bool(value: bool | str) -> bool:
+        """Parse a boolean-ish setting; anything outside true/1/yes → False."""
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"true", "1", "yes"}
+
+    @staticmethod
     def _validate_timezone(value: str) -> str:
         """Validate an IANA timezone name."""
         timezone_name = value.strip()
         try:
             ZoneInfo(timezone_name)
         except ZoneInfoNotFoundError as exc:
-            raise ValueError(f"Invalid local timezone '{timezone_name}'. Set PIE_LOCAL_TIMEZONE to a valid IANA timezone.") from exc
+            raise ValueError(
+                f"Invalid local timezone '{timezone_name}'. Set PIE_LOCAL_TIMEZONE to a valid IANA timezone."
+            ) from exc
         return timezone_name

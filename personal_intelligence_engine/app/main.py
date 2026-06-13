@@ -97,11 +97,10 @@ class PIEApp:
                 timeout_seconds=self.config.llm_timeout_seconds,
                 max_retries=self.config.llm_max_retries,
                 retry_backoff_seconds=self.config.llm_retry_backoff_seconds,
+                allow_remote=self.config.allow_remote_ollama,
             )
 
-        raise ValueError(
-            f"Invalid extractor backend '{self.config.extractor_backend}'. Use 'fake' or 'ollama'."
-        )
+        raise ValueError(f"Invalid extractor backend '{self.config.extractor_backend}'. Use 'fake' or 'ollama'.")
 
     def add_entry(
         self,
@@ -134,14 +133,16 @@ class PIEApp:
         with self.db.transaction():
             raw = self.ingestion.ingest(RawEntryCreate(content=text, source=source))
 
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=raw.id,
-                action=AuditAction.ENTRY_CREATED,
-                actor="system",
-                method="cli",
-                input_hash=raw.content_hash,
-                status=AuditStatus.SUCCESS,
-            ))
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=raw.id,
+                    action=AuditAction.ENTRY_CREATED,
+                    actor="system",
+                    method="cli",
+                    input_hash=raw.content_hash,
+                    status=AuditStatus.SUCCESS,
+                )
+            )
 
         # 2. Extract structured data
         try:
@@ -153,47 +154,56 @@ class PIEApp:
                     EntryStatus.ERROR.value,
                     raw.updated_at,
                 )
-                self.audit.log(AuditLogCreate(
-                    raw_entry_id=raw.id,
-                    action=AuditAction.EXTRACTION_COMPLETED,
-                    actor="system",
-                    method=self._extractor_method(),
-                    model_name=self._extractor_model_name(),
-                    prompt_version=self._extractor_prompt_version(),
-                    status=AuditStatus.ERROR,
-                    error_message=self._summarize_error(exc, raw_text=text),
-                ))
+                self.audit.log(
+                    AuditLogCreate(
+                        raw_entry_id=raw.id,
+                        action=AuditAction.EXTRACTION_COMPLETED,
+                        actor="system",
+                        method=self._extractor_method(),
+                        model_name=self._extractor_model_name(),
+                        prompt_version=self._extractor_prompt_version(),
+                        status=AuditStatus.ERROR,
+                        error_message=self._summarize_error(exc, raw_text=text),
+                    )
+                )
             raise
 
         # 2b. Apply user-provided overrides (project, entry_type, tags)
         extraction = self._apply_overrides(
-            extraction, project=project, entry_type=entry_type, tags=tags,
+            extraction,
+            project=project,
+            entry_type=entry_type,
+            tags=tags,
         )
 
         structured = None
         try:
             with self.db.transaction():
                 # Audit: extraction completed
-                self.audit.log(AuditLogCreate(
-                    raw_entry_id=raw.id,
-                    action=AuditAction.EXTRACTION_COMPLETED,
-                    actor="system",
-                    method=self._extractor_method(),
-                    model_name=self._extractor_model_name(),
-                    prompt_version=self._extractor_prompt_version(),
-                    status=AuditStatus.SUCCESS,
-                ))
+                self.audit.log(
+                    AuditLogCreate(
+                        raw_entry_id=raw.id,
+                        action=AuditAction.EXTRACTION_COMPLETED,
+                        actor="system",
+                        method=self._extractor_method(),
+                        model_name=self._extractor_model_name(),
+                        prompt_version=self._extractor_prompt_version(),
+                        status=AuditStatus.SUCCESS,
+                    )
+                )
 
                 # 3. Validate and save structured entry
                 structured = self.validation.validate_and_save(raw.id, extraction)
 
                 # Audit: validation completed
-                self.audit.log(AuditLogCreate(
-                    raw_entry_id=raw.id,
-                    action=AuditAction.VALIDATION_COMPLETED,
-                    actor="system",
-                    status=AuditStatus.SUCCESS,
-                ))
+                self.audit.log(
+                    AuditLogCreate(
+                        raw_entry_id=raw.id,
+                        action=AuditAction.VALIDATION_COMPLETED,
+                        actor="system",
+                        status=AuditStatus.SUCCESS,
+                    )
+                )
 
                 # 4. Handle low confidence
                 if extraction.confidence < LOW_CONFIDENCE_THRESHOLD and not auto_approve:
@@ -202,13 +212,15 @@ class PIEApp:
                         EntryStatus.NEEDS_REVIEW.value,
                         structured.updated_at,
                     )
-                    self.audit.log(AuditLogCreate(
-                        raw_entry_id=raw.id,
-                        action=AuditAction.LOW_CONFIDENCE,
-                        actor="system",
-                        status=AuditStatus.WARNING,
-                        error_message=f"Confidence {extraction.confidence:.2f} below threshold {LOW_CONFIDENCE_THRESHOLD}",
-                    ))
+                    self.audit.log(
+                        AuditLogCreate(
+                            raw_entry_id=raw.id,
+                            action=AuditAction.LOW_CONFIDENCE,
+                            actor="system",
+                            status=AuditStatus.WARNING,
+                            error_message=f"Confidence {extraction.confidence:.2f} below threshold {LOW_CONFIDENCE_THRESHOLD}",
+                        )
+                    )
                 else:
                     self.entries_repo.update_raw_entry_status(
                         raw.id,
@@ -232,13 +244,15 @@ class PIEApp:
                 generated = self.markdown.generate_note(structured, text)
 
                 # Audit: markdown generated
-                self.audit.log(AuditLogCreate(
-                    raw_entry_id=raw.id,
-                    action=AuditAction.MARKDOWN_GENERATED,
-                    actor="system",
-                    output_hash=generated.content_hash,
-                    status=AuditStatus.SUCCESS,
-                ))
+                self.audit.log(
+                    AuditLogCreate(
+                        raw_entry_id=raw.id,
+                        action=AuditAction.MARKDOWN_GENERATED,
+                        actor="system",
+                        output_hash=generated.content_hash,
+                        status=AuditStatus.SUCCESS,
+                    )
+                )
         except Exception:
             if structured is not None:
                 note_path = self.config.notes_dir / f"{structured.id}.md"
@@ -268,12 +282,14 @@ class PIEApp:
         report = self.report.generate_daily_report(date_str)
 
         # Audit: report generated
-        self.audit.log(AuditLogCreate(
-            action=AuditAction.REPORT_GENERATED,
-            actor="system",
-            method="daily_report",
-            status=AuditStatus.SUCCESS,
-        ))
+        self.audit.log(
+            AuditLogCreate(
+                action=AuditAction.REPORT_GENERATED,
+                actor="system",
+                method="daily_report",
+                status=AuditStatus.SUCCESS,
+            )
+        )
 
         entry_ids = json.loads(report.source_entry_ids_json)
 
@@ -297,12 +313,14 @@ class PIEApp:
         report = self.report.generate_weekly_report(date_str)
 
         # Audit: report generated
-        self.audit.log(AuditLogCreate(
-            action=AuditAction.REPORT_GENERATED,
-            actor="system",
-            method="weekly_report",
-            status=AuditStatus.SUCCESS,
-        ))
+        self.audit.log(
+            AuditLogCreate(
+                action=AuditAction.REPORT_GENERATED,
+                actor="system",
+                method="weekly_report",
+                status=AuditStatus.SUCCESS,
+            )
+        )
 
         entry_ids = json.loads(report.source_entry_ids_json)
 
@@ -327,12 +345,14 @@ class PIEApp:
         report = self.report.generate_project_report(project)
 
         # Audit: report generated
-        self.audit.log(AuditLogCreate(
-            action=AuditAction.REPORT_GENERATED,
-            actor="system",
-            method="project_report",
-            status=AuditStatus.SUCCESS,
-        ))
+        self.audit.log(
+            AuditLogCreate(
+                action=AuditAction.REPORT_GENERATED,
+                actor="system",
+                method="project_report",
+                status=AuditStatus.SUCCESS,
+            )
+        )
 
         entry_ids = json.loads(report.source_entry_ids_json)
 
@@ -401,13 +421,15 @@ class PIEApp:
                 raw_entry_id=row["raw_entry_id"],
                 updated_at=updated_at,
             )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=row["raw_entry_id"],
-                action=AuditAction.REVIEW_APPROVED,
-                actor="user",
-                method="human_review",
-                status=AuditStatus.SUCCESS,
-            ))
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=row["raw_entry_id"],
+                    action=AuditAction.REVIEW_APPROVED,
+                    actor="user",
+                    method="human_review",
+                    status=AuditStatus.SUCCESS,
+                )
+            )
 
         return {
             "status": "approved",
@@ -437,13 +459,15 @@ class PIEApp:
                 raw_entry_id=row["raw_entry_id"],
                 updated_at=updated_at,
             )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=row["raw_entry_id"],
-                action=AuditAction.REVIEW_REJECTED,
-                actor="user",
-                method="human_review",
-                status=AuditStatus.SUCCESS,
-            ))
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=row["raw_entry_id"],
+                    action=AuditAction.REVIEW_REJECTED,
+                    actor="user",
+                    method="human_review",
+                    status=AuditStatus.SUCCESS,
+                )
+            )
 
         return {
             "status": "rejected",
@@ -475,9 +499,7 @@ class PIEApp:
         """Get full detail for one structured entry."""
         row = self.entries_repo.get_entry_detail(structured_entry_id)
         if row is None:
-            raise ValueError(
-                f"No entry found for structured entry ID '{structured_entry_id}'."
-            )
+            raise ValueError(f"No entry found for structured entry ID '{structured_entry_id}'.")
         result = self._format_entry_row(row)
         result["updated_at"] = row["updated_at"]
         result["raw_content"] = row["raw_content"]
@@ -516,16 +538,16 @@ class PIEApp:
         with self.db.transaction():
             raw_entry_id = self.entries_repo.soft_delete_entry(structured_entry_id, deleted_at)
             if raw_entry_id is None:
-                raise ValueError(
-                    f"No active entry found for structured entry ID '{structured_entry_id}'."
+                raise ValueError(f"No active entry found for structured entry ID '{structured_entry_id}'.")
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=raw_entry_id,
+                    action=AuditAction.ENTRY_DELETED,
+                    actor="user",
+                    method="cli",
+                    status=AuditStatus.SUCCESS,
                 )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=raw_entry_id,
-                action=AuditAction.ENTRY_DELETED,
-                actor="user",
-                method="cli",
-                status=AuditStatus.SUCCESS,
-            ))
+            )
         return {
             "status": "deleted",
             "structured_entry_id": structured_entry_id,
@@ -538,16 +560,16 @@ class PIEApp:
         with self.db.transaction():
             raw_entry_id = self.entries_repo.restore_entry(structured_entry_id)
             if raw_entry_id is None:
-                raise ValueError(
-                    f"No deleted entry found for structured entry ID '{structured_entry_id}'."
+                raise ValueError(f"No deleted entry found for structured entry ID '{structured_entry_id}'.")
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=raw_entry_id,
+                    action=AuditAction.ENTRY_RESTORED,
+                    actor="user",
+                    method="cli",
+                    status=AuditStatus.SUCCESS,
                 )
-            self.audit.log(AuditLogCreate(
-                raw_entry_id=raw_entry_id,
-                action=AuditAction.ENTRY_RESTORED,
-                actor="user",
-                method="cli",
-                status=AuditStatus.SUCCESS,
-            ))
+            )
         return {
             "status": "restored",
             "structured_entry_id": structured_entry_id,
@@ -558,16 +580,19 @@ class PIEApp:
     def purge_deleted(self, days_old: int = 30) -> dict:
         """Permanently delete entries that were soft-deleted more than N days ago."""
         from datetime import timedelta
+
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
         with self.db.transaction():
             count = self.entries_repo.purge_deleted_entries(cutoff)
-            self.audit.log(AuditLogCreate(
-                action=AuditAction.ENTRIES_PURGED,
-                actor="user",
-                method="cli",
-                status=AuditStatus.SUCCESS,
-                error_message=f"Purged {count} entries older than {days_old} days.",
-            ))
+            self.audit.log(
+                AuditLogCreate(
+                    action=AuditAction.ENTRIES_PURGED,
+                    actor="user",
+                    method="cli",
+                    status=AuditStatus.SUCCESS,
+                    error_message=f"Purged {count} entries older than {days_old} days.",
+                )
+            )
         return {
             "status": "purged",
             "count": count,
@@ -616,10 +641,12 @@ class PIEApp:
             try:
                 applied.append(self.reprocess.reprocess_entry(structured_entry_id, dry_run=dry_run))
             except Exception as exc:
-                failed.append({
-                    "structured_entry_id": structured_entry_id,
-                    "error": self._summarize_error(exc),
-                })
+                failed.append(
+                    {
+                        "structured_entry_id": structured_entry_id,
+                        "error": self._summarize_error(exc),
+                    }
+                )
         return {
             "selected_ids": ids,
             "applied": applied,
@@ -778,6 +805,7 @@ def check_extractor_backend(
                 max_retries=config.llm_max_retries,
                 retry_backoff_seconds=config.llm_retry_backoff_seconds,
                 http_client=http_client,
+                allow_remote=config.allow_remote_ollama,
             )
         except ValueError as exc:
             return {

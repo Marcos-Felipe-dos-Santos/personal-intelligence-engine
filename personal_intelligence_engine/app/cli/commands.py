@@ -169,7 +169,6 @@ def add(
             app.close()
 
 
-
 @cli.command()
 @click.option("--deep", is_flag=True, help="Run deep health check with a test extraction.")
 def doctor(deep: bool) -> None:
@@ -254,7 +253,6 @@ def doctor(deep: bool) -> None:
         raise click.exceptions.Exit(1)
 
 
-
 @cli.group()
 def evaluate() -> None:
     """Run local synthetic evaluations."""
@@ -307,6 +305,7 @@ def _build_evaluation_extractor(backend: str):
             timeout_seconds=config.llm_timeout_seconds,
             max_retries=config.llm_max_retries,
             retry_backoff_seconds=config.llm_retry_backoff_seconds,
+            allow_remote=config.allow_remote_ollama,
         )
 
     raise ValueError(f"Invalid evaluation backend '{backend}'. Use 'fake' or 'ollama'.")
@@ -631,6 +630,7 @@ def entries_show(structured_entry_id: str) -> None:
         # Show a compact view of structured_json
         try:
             import json
+
             payload = json.loads(entry.get("structured_json") or "{}")
             formatted = json.dumps(payload, indent=2, ensure_ascii=False)
             click.echo(f"Structured JSON:     {_shorten(formatted, limit=500)}")
@@ -675,7 +675,9 @@ def entries_reprocess(
 
     # Recommend backup before applying changes
     if not dry_run:
-        click.echo("[INFO] Recomenda-se realizar um backup do banco de dados (ex: 'pie backup create') antes de aplicar o reprocessamento.")
+        click.echo(
+            "[INFO] Recomenda-se realizar um backup do banco de dados (ex: 'pie backup create') antes de aplicar o reprocessamento."
+        )
         click.echo("")
 
     app: PIEApp | None = None
@@ -740,7 +742,6 @@ def entries_reprocess(
     finally:
         if app is not None:
             app.close()
-
 
 
 @entries.command(name="delete")
@@ -814,7 +815,6 @@ def entries_purge(days_old: int, force: bool) -> None:
             app.close()
 
 
-
 @cli.command()
 @click.argument("query")
 @click.option("--type", "entry_type", default=None, help="Filter by entry type.")
@@ -884,7 +884,9 @@ def backup_create() -> None:
     """
     config = Config()
     if not config.database_path.exists():
-        raise click.ClickException(f"Could not access configured path: Database file '{config.database_path}' does not exist.")
+        raise click.ClickException(
+            f"Could not access configured path: Database file '{config.database_path}' does not exist."
+        )
 
     app: PIEApp | None = None
     try:
