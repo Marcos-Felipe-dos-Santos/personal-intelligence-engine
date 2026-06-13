@@ -583,7 +583,7 @@ class PIEApp:
 
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
         with self.db.transaction():
-            count = self.entries_repo.purge_deleted_entries(cutoff)
+            count, failed_files = self.entries_repo.purge_deleted_entries(cutoff)
             self.audit.log(
                 AuditLogCreate(
                     action=AuditAction.ENTRIES_PURGED,
@@ -598,6 +598,7 @@ class PIEApp:
             "count": count,
             "days_old": days_old,
             "message": f"Permanently deleted {count} entries soft-deleted more than {days_old} days ago.",
+            "unlink_failures": failed_files,
         }
 
     def close(self) -> None:
