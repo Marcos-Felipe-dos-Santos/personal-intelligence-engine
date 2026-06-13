@@ -215,6 +215,8 @@ def doctor(deep: bool) -> None:
     relative_paths = []
 
     click.echo("")
+    pie_home_display = str(config.pie_home) if config.pie_home else "not set — paths resolve from current directory"
+    click.echo(f"PIE_HOME: {pie_home_display}")
     click.echo("Configured Paths:")
     for label, path in configured_paths.items():
         absolute_path, is_relative = _path_display(path)
