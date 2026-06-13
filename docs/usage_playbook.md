@@ -13,15 +13,28 @@ Use PIE Core as a local memory log for one week to learn:
 
 Keep the test small. Prefer useful operational notes over exhaustive life logging.
 
+## Before First Use — Set PIE_HOME
+
+Set `PIE_HOME` to a fixed absolute directory before your first real session. This ensures all paths (database, notes, reports, backups, exports) always resolve under the same root, regardless of which working directory you run `pie` from.
+
+```bash
+# Add to your shell profile (~/.bashrc, ~/.zshrc, or equivalent):
+export PIE_HOME="$HOME/.pie"
+```
+
+Once set, all paths default to `$PIE_HOME/pie.db`, `$PIE_HOME/notes/`, etc. You can still override individual paths with `PIE_DATABASE_PATH`, `PIE_NOTES_DIR`, etc. — absolute values always take precedence over `PIE_HOME`.
+
+If you choose not to set `PIE_HOME`, PIE falls back to resolving paths from the current working directory (legacy behaviour). In that case, always run `pie` from the same directory to avoid silently creating separate databases.
+
 ## Daily Routine
 
-1. Run `pie doctor` before the first real entry of the day and confirm the absolute database path:
+1. Run `pie doctor` before the first real entry of the day and confirm paths:
 
 ```bash
 pie doctor
 ```
 
-If `pie doctor` reports a relative path warning, either run PIE consistently from the same working directory or configure absolute paths for `PIE_DATABASE_PATH`, `PIE_NOTES_DIR`, `PIE_REPORTS_DIR`, `PIE_BACKUP_DIR`, and `PIE_EXPORT_DIR`.
+`pie doctor` now shows the resolved `PIE_HOME` value. If `PIE_HOME` is not set, the output reads "not set — paths resolve from current directory" and any relative paths trigger a warning. Resolve this by setting `PIE_HOME` (recommended) or by always running `pie` from the same working directory.
 
 2. Create a backup before the first real entry of the day:
 

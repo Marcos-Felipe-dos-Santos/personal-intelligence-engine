@@ -35,13 +35,20 @@ class Config:
         backup_dir: str | Path | None = None,
         export_dir: str | Path | None = None,
         allow_remote_ollama: bool | str | None = None,
+        pie_home: str | Path | None = None,
     ) -> None:
-        self.database_path = Path(database_path or os.getenv("PIE_DATABASE_PATH", "pie.db"))
-        self.notes_dir = Path(notes_dir or os.getenv("PIE_NOTES_DIR", "notes"))
-        self.reports_dir = Path(reports_dir or os.getenv("PIE_REPORTS_DIR", "reports"))
+        raw_home = pie_home or os.getenv("PIE_HOME")
+        if raw_home:
+            self.pie_home: Path | None = Path(raw_home).expanduser().resolve()
+        else:
+            self.pie_home = None
+
+        self.database_path = self._resolve_path(database_path, "PIE_DATABASE_PATH", "pie.db")
+        self.notes_dir = self._resolve_path(notes_dir, "PIE_NOTES_DIR", "notes")
+        self.reports_dir = self._resolve_path(reports_dir, "PIE_REPORTS_DIR", "reports")
         self.migrations_dir = Path(migrations_dir or _project_root / "migrations")
-        self.backup_dir = Path(backup_dir or os.getenv("PIE_BACKUP_DIR", "backups"))
-        self.export_dir = Path(export_dir or os.getenv("PIE_EXPORT_DIR", "exports"))
+        self.backup_dir = self._resolve_path(backup_dir, "PIE_BACKUP_DIR", "backups")
+        self.export_dir = self._resolve_path(export_dir, "PIE_EXPORT_DIR", "exports")
         self.log_level = log_level or os.getenv("PIE_LOG_LEVEL", "INFO")
         self.extractor_backend = (extractor_backend or os.getenv("PIE_EXTRACTOR_BACKEND", "fake")).strip().lower()
         self.ollama_base_url = (ollama_base_url or os.getenv("PIE_OLLAMA_BASE_URL", "http://localhost:11434")).strip()
@@ -67,6 +74,15 @@ class Config:
         self.allow_remote_ollama = self._parse_bool(
             allow_remote_ollama if allow_remote_ollama is not None else os.getenv("PIE_ALLOW_REMOTE_OLLAMA", "false")
         )
+
+    def _resolve_path(self, value: str | Path | None, env_var: str, default_name: str) -> Path:
+        raw = value or os.getenv(env_var, default_name)
+        p = Path(raw)
+        if p.is_absolute():
+            return p
+        if self.pie_home:
+            return self.pie_home / p
+        return p
 
     def ensure_dirs(self) -> None:
         """Create output directories if they don't exist."""
