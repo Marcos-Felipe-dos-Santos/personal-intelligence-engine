@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from personal_intelligence_engine.app.cli.commands import cli

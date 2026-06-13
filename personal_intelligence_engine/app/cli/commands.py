@@ -433,6 +433,65 @@ def review_approve(structured_entry_id: str) -> None:
             app.close()
 
 
+@review.command(name="edit")
+@click.argument("structured_entry_id")
+@click.option("--summary", default=None, help="New summary text.")
+@click.option("--project", default=None, help="New project name.")
+@click.option(
+    "--entry-type",
+    "entry_type",
+    default=None,
+    type=click.Choice([t.value for t in EntryType], case_sensitive=False),
+    help="New entry type.",
+)
+def review_edit(
+    structured_entry_id: str,
+    summary: str | None,
+    project: str | None,
+    entry_type: str | None,
+) -> None:
+    """Edit structured fields of an entry, preserving raw content.
+
+    At least one of --summary, --project, or --entry-type must be provided.
+
+    Examples:\n
+        pie review edit <id> --summary "Revised summary"\n
+        pie review edit <id> --project PIE --entry-type decision
+    """
+    if summary is None and project is None and entry_type is None:
+        raise click.UsageError("Specify at least one field to edit: --summary, --project, --entry-type.")
+
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.edit_review_entry(
+            structured_entry_id,
+            summary=summary,
+            project=project,
+            entry_type=entry_type,
+        )
+
+        click.echo(f"[OK] {result['message']}")
+        click.echo(f"   Structured Entry ID: {result['structured_entry_id']}")
+        click.echo(f"   Raw Entry ID:        {result['raw_entry_id']}")
+
+        if result["changed_fields"]:
+            click.echo(f"   Changed fields:      {', '.join(result['changed_fields'])}")
+            before = result["before"]
+            after = result["after"]
+            for field in ["summary", "project", "entry_type"]:
+                if before[field] != after[field]:
+                    click.echo("")
+                    click.echo(f"   {field.replace('_', ' ').title()}:")
+                    click.echo(f"     Before: {before[field] or '-'}")
+                    click.echo(f"     After:  {after[field] or '-'}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @review.command(name="reject")
 @click.argument("structured_entry_id")
 def review_reject(structured_entry_id: str) -> None:

@@ -564,3 +564,143 @@ def test_review_history_does_not_print_raw_content(monkeypatch, work_dir):
 
     assert result.exit_code == 0
     assert raw_content not in result.output
+
+
+def _fetch_revisions(database_path, structured_entry_id: str) -> list[dict]:
+    with sqlite3.connect(database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT *
+            FROM structured_entry_revisions
+            WHERE structured_entry_id = ?
+            ORDER BY created_at;
+            """,
+            (structured_entry_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def test_review_edit_creates_revision(work_dir, monkeypatch):
+    import json
+
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", "Summary corrigida manualmente"])
+
+    assert result.exit_code == 0
+    revisions = _fetch_revisions(work_dir / "pie.db", structured_id)
+    assert len(revisions) == 1
+    assert revisions[0]["structured_entry_id"] == structured_id
+    before = json.loads(revisions[0]["before_json"])
+    after = json.loads(revisions[0]["after_json"])
+    assert "summary" in before
+    assert after["summary"] == "Summary corrigida manualmente"
+
+
+def test_review_edit_preserves_raw(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    raw_content = "Nota sintetica sem projeto claro"
+    structured_id = _add_entry(raw_content)
+    before = _fetch_review_state(work_dir / "pie.db", structured_id)
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", "Summary nova"])
+
+    assert result.exit_code == 0
+    after = _fetch_review_state(work_dir / "pie.db", structured_id)
+    assert before["raw_content"] == raw_content
+    assert after["raw_content"] == raw_content
+
+
+def test_review_edit_audit_log(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    raw_entry_id = _fetch_review_state(work_dir / "pie.db", structured_id)["raw_entry_id"]
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", "Summary nova"])
+
+    assert result.exit_code == 0
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        conn.row_factory = sqlite3.Row
+        logs = conn.execute(
+            "SELECT * FROM audit_logs WHERE raw_entry_id = ? AND action = 'review_edited';",
+            (raw_entry_id,),
+        ).fetchall()
+    assert len(logs) == 1
+    assert logs[0]["actor"] == "user"
+    assert logs[0]["method"] == "human_review"
+    assert logs[0]["status"] == "success"
+
+
+def test_review_edit_nonexistent_entry(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+
+    result = CliRunner().invoke(cli, ["review", "edit", "missing-id", "--summary", "x"])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID 'missing-id'" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_edit_no_fields_raises_error(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id])
+
+    assert result.exit_code != 0
+    assert "at least one field" in result.output.lower()
+    assert "Traceback" not in result.output
+
+
+def test_review_edit_regenerates_markdown(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    new_summary = "Summary corrigida e melhorada para o markdown"
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", new_summary])
+
+    assert result.exit_code == 0
+    md_path = work_dir / "notes" / f"{structured_id}.md"
+    assert md_path.exists()
+    md_content = md_path.read_text(encoding="utf-8")
+    assert new_summary in md_content
+
+
+def test_review_edit_deleted_entry_raises_error(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    CliRunner().invoke(cli, ["entries", "delete", "--yes", structured_id])
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", "Nova summary"])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_edit_empty_summary_raises_error(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", ""])
+
+    assert result.exit_code != 0
+    assert "summary must not be empty" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_edit_no_changes_returns_friendly_message(work_dir, monkeypatch):
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica sem projeto claro")
+    with sqlite3.connect(work_dir / "pie.db") as conn:
+        row = conn.execute("SELECT summary FROM structured_entries WHERE id = ?;", (structured_id,)).fetchone()
+    current_summary = row[0]
+
+    result = CliRunner().invoke(cli, ["review", "edit", structured_id, "--summary", current_summary])
+
+    assert result.exit_code == 0
+    assert "no changes" in result.output.lower()
+    revisions = _fetch_revisions(work_dir / "pie.db", structured_id)
+    assert len(revisions) == 0
