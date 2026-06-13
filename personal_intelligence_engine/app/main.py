@@ -16,6 +16,7 @@ from personal_intelligence_engine.app.domain.schemas import (
     AuditLogCreate,
     ExtractionResult,
     RawEntryCreate,
+    StructuredEntryRevision,
 )
 from personal_intelligence_engine.app.domain.types import (
     LOW_CONFIDENCE_THRESHOLD,
@@ -474,6 +475,180 @@ class PIEApp:
             "structured_entry_id": row["structured_entry_id"],
             "raw_entry_id": row["raw_entry_id"],
             "message": "Entry rejected and removed from review queue.",
+        }
+
+    def edit_review_entry(
+        self,
+        structured_entry_id: str,
+        *,
+        summary: str | None = None,
+        project: str | None = None,
+        entry_type: str | None = None,
+    ) -> dict:
+        """Edit structured fields of an entry, preserving raw content and recording a revision.
+
+        Args:
+            structured_entry_id: ID of the structured entry to edit.
+            summary: New summary text (optional).
+            project: New project name (optional). Pass "" to clear to NULL.
+            entry_type: New entry type value (optional).
+
+        Returns:
+            Dict with before/after snapshots, changed_fields, structured_entry_id, message.
+        """
+        if summary is None and project is None and entry_type is None:
+            raise ValueError("Specify at least one field to edit (summary, project, entry_type).")
+
+        # Validate field values before any DB access
+        if summary is not None and not summary.strip():
+            raise ValueError("summary must not be empty.")
+        # Normalize empty project string to NULL
+        if project is not None and not project.strip():
+            project = None
+
+        # get_entry_detail enforces deleted_at IS NULL on both tables, so it
+        # naturally blocks edits on soft-deleted entries and provides raw_content.
+        detail = self.entries_repo.get_entry_detail(structured_entry_id)
+        if detail is None:
+            raise ValueError(f"No structured entry found for ID '{structured_entry_id}'.")
+
+        raw_content = detail["raw_content"]
+
+        # Fetch as StructuredEntry for type-safe model_copy
+        structured = self.entries_repo.get_structured_entry(structured_entry_id)
+        if structured is None:  # pragma: no cover
+            raise RuntimeError(f"Inconsistency: structured entry '{structured_entry_id}' missing after detail fetch.")
+
+        # Parse current structured_json to keep embedded fields in sync
+        try:
+            payload = json.loads(structured.structured_json or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+
+        new_summary = summary if summary is not None else structured.summary
+        new_project = project if project is not None else structured.project
+        new_entry_type = EntryType(entry_type) if entry_type is not None else structured.entry_type
+
+        payload["summary"] = new_summary
+        payload["project"] = new_project
+        payload["entry_type"] = new_entry_type.value
+        new_structured_json = json.dumps(payload, ensure_ascii=False)
+
+        updated_at = datetime.now(timezone.utc).isoformat()
+
+        # Snapshots must not contain raw content (enforced by schema validator)
+        before_dict = {
+            "id": structured.id,
+            "raw_entry_id": structured.raw_entry_id,
+            "entry_type": structured.entry_type.value,
+            "project": structured.project,
+            "summary": structured.summary,
+            "confidence": structured.confidence,
+            "structured_json": structured.structured_json,
+            "validation_status": structured.validation_status.value,
+            "created_at": structured.created_at,
+            "updated_at": structured.updated_at,
+        }
+        after_dict = {
+            "id": structured.id,
+            "raw_entry_id": structured.raw_entry_id,
+            "entry_type": new_entry_type.value,
+            "project": new_project,
+            "summary": new_summary,
+            "confidence": structured.confidence,
+            "structured_json": new_structured_json,
+            "validation_status": structured.validation_status.value,
+            "created_at": structured.created_at,
+            "updated_at": updated_at,
+        }
+
+        changed_fields = [
+            key
+            for key in ["entry_type", "project", "summary", "structured_json"]
+            if before_dict[key] != after_dict[key]
+        ]
+
+        # Early return when nothing actually changed — avoids polluting audit history
+        if not changed_fields:
+            return {
+                "structured_entry_id": structured_entry_id,
+                "raw_entry_id": structured.raw_entry_id,
+                "before": {
+                    "summary": structured.summary,
+                    "project": structured.project,
+                    "entry_type": structured.entry_type.value,
+                },
+                "after": {
+                    "summary": new_summary,
+                    "project": new_project,
+                    "entry_type": new_entry_type.value,
+                },
+                "changed_fields": [],
+                "message": "No changes detected.",
+            }
+
+        updated_structured = structured.model_copy(
+            update={
+                "entry_type": new_entry_type,
+                "project": new_project,
+                "summary": new_summary,
+                "structured_json": new_structured_json,
+                "updated_at": updated_at,
+            }
+        )
+
+        with self.db.transaction():
+            self.entries_repo.update_structured_entry(
+                structured_entry_id=structured_entry_id,
+                entry_type=new_entry_type.value,
+                project=new_project,
+                summary=new_summary,
+                confidence=structured.confidence,
+                structured_json=new_structured_json,
+                validation_status=structured.validation_status.value,
+                updated_at=updated_at,
+            )
+            self.revisions_repo.create_revision(
+                StructuredEntryRevision(
+                    structured_entry_id=structured_entry_id,
+                    raw_entry_id=structured.raw_entry_id,
+                    before_json=json.dumps(before_dict, ensure_ascii=False),
+                    after_json=json.dumps(after_dict, ensure_ascii=False),
+                    changed_fields_json=json.dumps(changed_fields, ensure_ascii=False),
+                    reason="review_edit",
+                    actor="user",
+                )
+            )
+            self.audit.log(
+                AuditLogCreate(
+                    raw_entry_id=structured.raw_entry_id,
+                    action=AuditAction.REVIEW_EDITED,
+                    actor="user",
+                    method="human_review",
+                    status=AuditStatus.SUCCESS,
+                )
+            )
+
+        # Markdown is regenerated outside the transaction so a write failure
+        # does not roll back the DB update. The DB is the source of truth;
+        # the .md is a projection that can be rebuilt. (Same pattern as ReprocessService.)
+        self.markdown.generate_note(updated_structured, raw_content)
+
+        return {
+            "structured_entry_id": structured_entry_id,
+            "raw_entry_id": structured.raw_entry_id,
+            "before": {
+                "summary": structured.summary,
+                "project": structured.project,
+                "entry_type": structured.entry_type.value,
+            },
+            "after": {
+                "summary": new_summary,
+                "project": new_project,
+                "entry_type": new_entry_type.value,
+            },
+            "changed_fields": changed_fields,
+            "message": f"Entry updated. {len(changed_fields)} field(s) changed.",
         }
 
     # --- Entries List / Show / Search ---
