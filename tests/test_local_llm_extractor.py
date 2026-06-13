@@ -7,6 +7,7 @@ import json
 import pytest
 
 from personal_intelligence_engine.app.adapters.local_llm_extractor import (
+    LocalLLMConfigurationError,
     LocalLLMExtractor,
     LocalLLMExtractorError,
 )
@@ -197,6 +198,20 @@ def test_local_llm_health_check_passes_when_model_exists():
     assert result.ok is True
     assert result.model_name == "test-model"
     assert result.prompt_version == "extraction_prompt_v1"
+
+
+def test_remote_ollama_url_rejected_by_default():
+    with pytest.raises(LocalLLMConfigurationError, match="Remote Ollama URL blocked"):
+        LocalLLMExtractor(base_url="http://192.168.1.50:11434", model="x")
+
+
+def test_localhost_ollama_url_allowed():
+    LocalLLMExtractor(base_url="http://localhost:11434", model="x")
+    LocalLLMExtractor(base_url="http://127.0.0.1:11434", model="x")
+
+
+def test_remote_ollama_allowed_with_override():
+    LocalLLMExtractor(base_url="http://192.168.1.50:11434", model="x", allow_remote=True)
 
 
 def test_local_llm_health_check_reports_unavailable_ollama():

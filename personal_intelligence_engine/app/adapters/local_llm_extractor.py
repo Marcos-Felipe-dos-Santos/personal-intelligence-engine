@@ -190,8 +190,9 @@ class LocalLLMExtractor:
         http_client: OllamaClient | None = None,
         prompt_path: Path | None = None,
         sleeper: Callable[[float], None] | None = None,
+        allow_remote: bool = False,
     ) -> None:
-        self.base_url = self._validate_base_url(base_url)
+        self.base_url = self._validate_base_url(base_url, allow_remote=allow_remote)
         self.model = model.strip()
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
@@ -367,12 +368,18 @@ class LocalLLMExtractor:
             return prompt_path.read_text(encoding="utf-8")
         return _DEFAULT_PROMPT
 
+    _LOCAL_HOSTNAMES = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
     @staticmethod
-    def _validate_base_url(base_url: str) -> str:
+    def _validate_base_url(base_url: str, *, allow_remote: bool = False) -> str:
         value = base_url.strip().rstrip("/")
         parsed = urllib.parse.urlparse(value)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise LocalLLMConfigurationError("Ollama base URL is invalid. Set PIE_OLLAMA_BASE_URL to an http(s) URL.")
+        hostname = (parsed.hostname or "").lower()
+        if not allow_remote and hostname not in LocalLLMExtractor._LOCAL_HOSTNAMES:
             raise LocalLLMConfigurationError(
-                "Ollama base URL is invalid. Set PIE_OLLAMA_BASE_URL to an http(s) URL."
+                "Remote Ollama URL blocked. Personal data would be sent to an "
+                "external host. Set PIE_ALLOW_REMOTE_OLLAMA=true to override."
             )
         return value
