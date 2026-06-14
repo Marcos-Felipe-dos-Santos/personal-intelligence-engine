@@ -609,6 +609,57 @@ def project_report(project: str) -> None:
             app.close()
 
 
+@report.command(name="decisions")
+@click.option("--project", default=None, help="Filter by project.")
+@click.option("--since", default=None, help="Filter by date (YYYY-MM-DD).")
+def report_decisions(project: str | None, since: str | None) -> None:
+    """Generate a decisions report.
+
+    Example:
+        pie report decisions
+        pie report decisions --project PIE --since 2026-01-01
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.generate_decisions_report(project=project, since=since)
+
+        click.echo("[OK] Decisions report generated!")
+        click.echo(f"   Report ID:    {result['report_id']}")
+        click.echo(f"   Entries:      {result['entry_count']}")
+        click.echo(f"   File:         {result['file_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@report.command(name="tasks")
+@click.option("--project", default=None, help="Filter by project.")
+def report_tasks(project: str | None) -> None:
+    """Generate a pending tasks report.
+
+    Example:
+        pie report tasks
+        pie report tasks --project PIE
+    """
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.generate_tasks_report(project=project)
+
+        click.echo("[OK] Tasks report generated!")
+        click.echo(f"   Report ID:    {result['report_id']}")
+        click.echo(f"   Entries:      {result['entry_count']}")
+        click.echo(f"   File:         {result['file_path']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
 @cli.group()
 def entries() -> None:
     """Inspect stored entries."""

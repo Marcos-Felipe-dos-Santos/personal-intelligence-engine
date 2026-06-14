@@ -210,6 +210,14 @@ def test_localhost_ollama_url_allowed():
     LocalLLMExtractor(base_url="http://127.0.0.1:11434", model="x")
 
 
+def test_ipv6_localhost_ollama_url_allowed():
+    LocalLLMExtractor(base_url="http://[::1]:11434", model="x")
+
+
+def test_all_interfaces_ollama_url_allowed():
+    LocalLLMExtractor(base_url="http://0.0.0.0:11434", model="x")
+
+
 def test_remote_ollama_allowed_with_override():
     LocalLLMExtractor(base_url="http://192.168.1.50:11434", model="x", allow_remote=True)
 

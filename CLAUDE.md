@@ -10,7 +10,8 @@ Python + Click + SQLite + Pydantic. Sem nuvem obrigatória.
 - Lint: `ruff check .`
 - Format: `ruff format .`
 - CLI: `pie doctor`, `pie add`, `pie entries list`, `pie search`, `pie review`,
-  `pie report`, `pie backup create`, `pie export`, `pie entries reprocess`
+  `pie review edit`, `pie report`, `pie report decisions`, `pie report tasks`,
+  `pie backup create`, `pie export`, `pie entries reprocess`
 
 ## Arquitetura (camadas)
 CLI (cli/commands.py) -> PIEApp (main.py) -> Services -> Repositories -> SQLite
@@ -35,21 +36,23 @@ Modulos principais:
 - sem acao externa silenciosa
 
 ## Estado atual
-- 347 testes passando, ruff limpo
+- 379 testes passando, ruff limpo
 - PIE Core alpha funcional, pronto para uso real controlado
 - Proporcao teste/producao ~1.2:1
 
-## Gargalos conhecidos (prioridade de correcao)
-1. Ollama remoto NAO bloqueado — _validate_base_url so valida http(s),
-   nao impede endpoint externo. Dados pessoais podem vazar via PIE_OLLAMA_BASE_URL.
-   FIX: bloquear remoto por padrao, PIE_ALLOW_REMOTE_OLLAMA=true como override.
-2. PIE_HOME nao existe — paths relativos (pie.db, notes/) resolvidos do CWD,
-   rodar de pastas diferentes cria bancos diferentes. FIX: raiz fixa configuravel.
-3. Soft delete/purge pode nao remover .md de notes/ do disco — verificar e,
-   se confirmado, mover para trash/ no delete e unlink no purge.
-4. review edit nao existe — so approve/reject/history. FIX: pie review edit com
-   structured_entry_revisions, before/after.
+## Gargalos conhecidos (abertos)
 5. FakeExtractor e heuristico — confidence nao e qualidade real. Usar --project/--type/--tag.
+   Aviso documentado no codigo (fake_extractor.py), comportamento esperado.
+
+## Gargalos resolvidos (PRs 7-10)
+1. Ollama remoto bloqueado por padrao — PIE_ALLOW_REMOTE_OLLAMA=true como override.
+   Implementado em local_llm_extractor._validate_base_url (PR 7).
+2. PIE_HOME implementado — raiz fixa configuravel, todos os paths resolvidos sob ela.
+   Sem PIE_HOME, comportamento original (CWD) preservado (PR 9).
+3. Purge remove .md do disco — generated_files consultado antes do DELETE,
+   unlink(missing_ok=True) por arquivo, falhas reportadas sem abortar (PR 8).
+4. pie review edit implementado — structured_entry_revisions com snapshot before/after,
+   audit log REVIEW_EDITED, transacao atomica (PR 10).
 
 ## Dados sensiveis — NUNCA tocar
 - .env, pie.db, notes/, reports/, backups/, exports/ contem dados pessoais reais

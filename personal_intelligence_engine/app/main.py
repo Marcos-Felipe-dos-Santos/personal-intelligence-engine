@@ -365,6 +365,53 @@ class PIEApp:
             "status": "ok",
         }
 
+    def generate_decisions_report(self, project: str | None = None, since: str | None = None) -> dict:
+        """Generate a decisions report, optionally filtered by project and since date."""
+        report = self.report.generate_decisions_report(project=project, since=since)
+
+        self.audit.log(
+            AuditLogCreate(
+                action=AuditAction.REPORT_GENERATED,
+                actor="system",
+                method="decisions_report",
+                status=AuditStatus.SUCCESS,
+            )
+        )
+
+        entry_ids = json.loads(report.source_entry_ids_json)
+
+        return {
+            "report_id": report.id,
+            "file_path": report.file_path,
+            "entry_count": len(entry_ids),
+            "project": project,
+            "since": since,
+            "status": "ok",
+        }
+
+    def generate_tasks_report(self, project: str | None = None) -> dict:
+        """Generate a pending tasks report, optionally filtered by project."""
+        report = self.report.generate_tasks_report(project=project)
+
+        self.audit.log(
+            AuditLogCreate(
+                action=AuditAction.REPORT_GENERATED,
+                actor="system",
+                method="tasks_report",
+                status=AuditStatus.SUCCESS,
+            )
+        )
+
+        entry_ids = json.loads(report.source_entry_ids_json)
+
+        return {
+            "report_id": report.id,
+            "file_path": report.file_path,
+            "entry_count": len(entry_ids),
+            "project": project,
+            "status": "ok",
+        }
+
     def list_review_entries(self) -> list[dict]:
         """List entries currently waiting for human review."""
         return [self._format_review_entry(row) for row in self.entries_repo.list_entries_needing_review()]
