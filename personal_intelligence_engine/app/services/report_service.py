@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -336,7 +337,6 @@ class ReportService:
         md_content = self._render_project_report(project, entries)
 
         # Sanitize project name for filename safety
-        import re
         sanitized_project = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
         filename = f"project_{sanitized_project}.md"
         filepath = self._reports_dir / filename
@@ -459,5 +459,140 @@ class ReportService:
         lines.append("")
         lines.append("This report is based entirely on local data captured for the specified project. It does not reflect external integrations or uncaptured activities.")
         lines.append("")
+
+        return "\n".join(lines)
+
+    def generate_decisions_report(self, project: str | None = None, since: str | None = None) -> Report:
+        """Generate a report of all decisions, optionally filtered by project and date."""
+        self._reports_dir.mkdir(parents=True, exist_ok=True)
+
+        if since:
+            since = self._validate_date(since)
+
+        rows = self._entries_repo.list_entries(entry_type="decision", project=project, limit=9999)
+
+        if since:
+            rows = [r for r in rows if r["created_at"][:10] >= since]
+
+        entry_ids = [r["structured_entry_id"] for r in rows]
+        md_content = self._render_decisions_report(rows, project=project, since=since)
+
+        if project:
+            sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
+            filename = f"decisions_{sanitized}.md"
+        else:
+            filename = "decisions_all.md"
+
+        filepath = self._reports_dir / filename
+        filepath.write_text(md_content, encoding="utf-8")
+
+        today_str = datetime.now(self._local_timezone).date().isoformat()
+        report = Report(
+            report_type="decisions",
+            date_start=since or today_str,
+            date_end=today_str,
+            summary=f"{len(rows)} decisions" + (f" for project {project!r}" if project else ""),
+            file_path=str(filepath),
+            source_entry_ids_json=json.dumps(entry_ids),
+        )
+        self._reports_repo.insert(report)
+        return report
+
+    def _render_decisions_report(self, rows: list[dict], project: str | None, since: str | None) -> str:
+        """Render a decisions report as Markdown."""
+        lines: list[str] = []
+        today = datetime.now(self._local_timezone).date().isoformat()
+
+        lines.append("# Decisions Report")
+        lines.append("")
+        lines.append(f"**Generated:** {today}")
+        if project:
+            lines.append(f"**Project:** {project}")
+        if since:
+            lines.append(f"**Since:** {since}")
+        lines.append(f"**Total decisions:** {len(rows)}")
+        lines.append("")
+
+        if not rows:
+            lines.append("No decisions found.")
+            lines.append("")
+            return "\n".join(lines)
+
+        by_project: dict[str, list[dict]] = {}
+        for row in rows:
+            p = row.get("project") or "(no project)"
+            by_project.setdefault(p, []).append(row)
+
+        lines.append("## Decisions")
+        lines.append("")
+        for proj, proj_rows in sorted(by_project.items()):
+            lines.append(f"### {proj}")
+            lines.append("")
+            for row in proj_rows:
+                lines.append(f"- **ID:** `{row['structured_entry_id']}` — {row['summary']}")
+                lines.append(f"  **Date:** {row['created_at'][:10]}")
+                lines.append("")
+
+        return "\n".join(lines)
+
+    def generate_tasks_report(self, project: str | None = None) -> Report:
+        """Generate a report of pending tasks (valid or needs_review), optionally filtered by project."""
+        self._reports_dir.mkdir(parents=True, exist_ok=True)
+
+        rows = self._entries_repo.list_entries(entry_type="candidate_task", project=project, limit=9999)
+
+        pending_statuses = {"valid", "needs_review"}
+        rows = [r for r in rows if r["validation_status"] in pending_statuses]
+
+        entry_ids = [r["structured_entry_id"] for r in rows]
+        md_content = self._render_tasks_report(rows, project=project)
+
+        if project:
+            sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
+            filename = f"tasks_pending_{sanitized}.md"
+        else:
+            filename = "tasks_pending.md"
+
+        filepath = self._reports_dir / filename
+        filepath.write_text(md_content, encoding="utf-8")
+
+        today_str = datetime.now(self._local_timezone).date().isoformat()
+        report = Report(
+            report_type="tasks",
+            date_start=today_str,
+            date_end=today_str,
+            summary=f"{len(rows)} pending tasks" + (f" for project {project!r}" if project else ""),
+            file_path=str(filepath),
+            source_entry_ids_json=json.dumps(entry_ids),
+        )
+        self._reports_repo.insert(report)
+        return report
+
+    def _render_tasks_report(self, rows: list[dict], project: str | None) -> str:
+        """Render a pending tasks report as Markdown."""
+        lines: list[str] = []
+        today = datetime.now(self._local_timezone).date().isoformat()
+
+        lines.append("# Pending Tasks Report")
+        lines.append("")
+        lines.append(f"**Generated:** {today}")
+        if project:
+            lines.append(f"**Project:** {project}")
+        lines.append(f"**Total pending:** {len(rows)}")
+        lines.append("")
+
+        if not rows:
+            lines.append("No pending tasks found.")
+            lines.append("")
+            return "\n".join(lines)
+
+        lines.append("## Tasks")
+        lines.append("")
+        for row in rows:
+            lines.append(f"- **ID:** `{row['structured_entry_id']}` — {row['summary']}")
+            lines.append(f"  **Status:** {row['validation_status']}  **Date:** {row['created_at'][:10]}")
+            if row.get("project"):
+                lines.append(f"  **Project:** {row['project']}")
+            lines.append("")
 
         return "\n".join(lines)
