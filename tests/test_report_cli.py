@@ -205,3 +205,25 @@ def test_report_tasks_by_project(monkeypatch, work_dir, app):
     content = report_file.read_text()
     assert "PIE Task" in content
     assert "Other Task" not in content
+
+
+def test_report_decisions_empty_database(monkeypatch, work_dir, app):
+    """report decisions on an empty database generates a valid file with the empty message."""
+    _configure_temp_env(monkeypatch, work_dir)
+
+    result = CliRunner().invoke(cli, ["report", "decisions"])
+
+    assert result.exit_code == 0, result.output
+    content = Path(work_dir / "reports" / "decisions_all.md").read_text()
+    assert "No decisions found" in content
+
+
+def test_report_tasks_empty_database(monkeypatch, work_dir, app):
+    """report tasks on an empty database generates a valid file with the empty message."""
+    _configure_temp_env(monkeypatch, work_dir)
+
+    result = CliRunner().invoke(cli, ["report", "tasks"])
+
+    assert result.exit_code == 0, result.output
+    content = Path(work_dir / "reports" / "tasks_pending.md").read_text()
+    assert "No pending tasks found" in content

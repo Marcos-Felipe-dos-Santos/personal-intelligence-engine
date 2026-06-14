@@ -28,6 +28,9 @@ class ReportService:
         self._reports_dir = reports_dir
         self._local_timezone = ZoneInfo(local_timezone)
 
+    def _sanitize_filename(self, name: str) -> str:
+        return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
+
     def generate_daily_report(self, date_str: str) -> Report:
         """Generate a daily report for the given date.
 
@@ -336,8 +339,7 @@ class ReportService:
 
         md_content = self._render_project_report(project, entries)
 
-        # Sanitize project name for filename safety
-        sanitized_project = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
+        sanitized_project = self._sanitize_filename(project)
         filename = f"project_{sanitized_project}.md"
         filepath = self._reports_dir / filename
         filepath.write_text(md_content, encoding="utf-8")
@@ -477,11 +479,9 @@ class ReportService:
         entry_ids = [r["structured_entry_id"] for r in rows]
         md_content = self._render_decisions_report(rows, project=project, since=since)
 
-        if project:
-            sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
-            filename = f"decisions_{sanitized}.md"
-        else:
-            filename = "decisions_all.md"
+        # Naming: decisions_all.md (global) vs decisions_<project>.md (filtered).
+        # tasks_pending.md uses no _all suffix — intentional asymmetry kept for brevity.
+        filename = f"decisions_{self._sanitize_filename(project)}.md" if project else "decisions_all.md"
 
         filepath = self._reports_dir / filename
         filepath.write_text(md_content, encoding="utf-8")
@@ -547,11 +547,7 @@ class ReportService:
         entry_ids = [r["structured_entry_id"] for r in rows]
         md_content = self._render_tasks_report(rows, project=project)
 
-        if project:
-            sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '_', project)
-            filename = f"tasks_pending_{sanitized}.md"
-        else:
-            filename = "tasks_pending.md"
+        filename = f"tasks_pending_{self._sanitize_filename(project)}.md" if project else "tasks_pending.md"
 
         filepath = self._reports_dir / filename
         filepath.write_text(md_content, encoding="utf-8")
