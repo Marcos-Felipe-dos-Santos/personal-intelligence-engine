@@ -121,7 +121,36 @@ Output:
    File:         reports/project_PIE.md
 ```
 
+#### Generate a decisions report
+
+```bash
+pie report decisions
+pie report decisions --project PIE
+pie report decisions --since 2026-01-01
+```
+
+Generates a Markdown list of all `decision` entries, grouped by project. Supports optional `--project` and `--since YYYY-MM-DD` filters. Output file: `decisions_all.md` or `decisions_<project>.md`.
+
+#### Generate a tasks report
+
+```bash
+pie report tasks
+pie report tasks --project PIE
+```
+
+Generates a Markdown list of `candidate_task` entries with status `valid` or `needs_review`. Excludes invalid and soft-deleted entries. Output file: `tasks_pending.md` or `tasks_pending_<project>.md`.
+
 Reports are saved in `reports/`, cite structured/raw source entry IDs, and are ignored by Git.
+
+#### Edit an entry under review
+
+```bash
+pie review edit <structured_entry_id> --summary "New summary"
+pie review edit <structured_entry_id> --project PIE
+pie review edit <structured_entry_id> --entry-type decision
+```
+
+Edits one or more structured fields (`summary`, `project`, `entry_type`) while preserving `raw_entries.content` unchanged. Records a before/after revision in `structured_entry_revisions` and writes an audit log entry. Regenerates the Markdown note after a successful edit.
 
 #### List entries
 
@@ -231,10 +260,23 @@ pie evaluate extraction --backend fake --output reports/evaluation/fake.md
 
 See [docs/troubleshooting.md](docs/troubleshooting.md) for Ollama health checks, retry settings, and common error messages.
 
+### Configuration
+
+#### PIE_HOME — fixed data root (recommended)
+
+```bash
+export PIE_HOME="$HOME/.pie"   # recommended before real use
+```
+
+When `PIE_HOME` is set, all runtime paths (`pie.db`, `notes/`, `reports/`, `backups/`, `exports/`) are resolved under that directory. Without `PIE_HOME`, paths are resolved from the current working directory — running PIE from different directories creates separate databases.
+
+Individual paths can still be overridden via their own env vars (`PIE_DATABASE_PATH`, `PIE_NOTES_DIR`, etc.), and an absolute path always wins over the `PIE_HOME`-relative default.
+
 ### Run Tests
 
 ```bash
 python -m pytest -q
+# 379 tests
 ```
 
 ## 📁 Project Structure
