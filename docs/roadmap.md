@@ -22,11 +22,11 @@ Goal: validate the current Core workflow with careful local usage before broaden
 - [x] Capture entries with `pie add`.
 - [x] Inspect entries with `pie entries list` and `pie entries show`.
 - [x] Search entries with `pie search`.
-- [x] Review uncertain entries with `pie review list/show/approve/reject/history`.
+- [x] Review uncertain entries with `pie review list/show/approve/reject/edit/history`.
 - [x] Reprocess entries safely with per-entry rollback and revisions.
-- [x] Generate daily, weekly, and project reports.
+- [x] Generate daily, weekly, project, decisions, and tasks reports.
 - [x] Back up and export local data.
-- [ ] Document a recommended real-use workflow (capturing a week of logs, reviewing, running weekly reports, exporting backups).
+- [x] Document a recommended real-use workflow (see [Usage Playbook](usage_playbook.md)).
 - [ ] Identify rough edges from controlled usage (CLI navigation speed, review batch approving, formatting inconsistencies).
 - [ ] Polish CLI messages where they affect trust or safety (explicit warning when database migration is pending, clear confidence explanation, database path verification).
 
@@ -40,9 +40,8 @@ Goal: close the remaining Core gaps without starting the Assistant Layer.
 - [x] Recalibrate FakeExtractor confidence scores (0.60 match, 0.30 fallback) to avoid artificial high certainty, and add support for `--auto-approve` to bypass review.
 - [x] Implement explicit migration logging, pending/applied migration introspection, post-execution schema verification, and `pie doctor` status reporting.
 - [x] Integrate local Ollama deep health check (`pie doctor --deep`) using a synthetic test extraction and validation of response quality.
-- [ ] Decide whether `pie review edit <id>` is required for Core v1 or can remain deferred.
-- [ ] If implemented, use the existing `structured_entry_revisions` snapshot model.
-- [ ] Improve stale-Markdown guidance after reprocessing or future edits.
+- [x] Implement `pie review edit <id>` using the existing `structured_entry_revisions` snapshot model, with before/after revision, audit log, and Markdown note regeneration.
+- [x] Add focused reports: `pie report decisions` (with project and date filters) and `pie report tasks` (with project filter).
 - [ ] Strengthen source citation in every memory-like output.
 - [ ] Keep backup/export and privacy warnings visible.
 - [ ] Add tests for any UX polish or recovery flow changes.

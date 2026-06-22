@@ -212,7 +212,7 @@ pie entries reprocess --status needs_review
 ```
 
 > [!IMPORTANT]
-> Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database but does not automatically regenerate note Markdown files in `notes/`.
+> Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database and regenerates the Markdown note for each reprocessed entry. The note regeneration occurs after the database commit; if the file write fails, the database remains correct but the note may be stale.
 >
 > Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch. If one entry fails, that entry is rolled back completely while earlier successful entries remain applied. The command output reports total selected, total applied, total failed, applied IDs, failed IDs, and a short error per failed ID. `raw_entries.content` is never edited by reprocessing.
 

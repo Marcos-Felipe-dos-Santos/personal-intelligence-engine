@@ -183,7 +183,7 @@ pie entries reprocess --status needs_review
 ```
 
 > [!IMPORTANT]
-> Recomenda-se fortemente realizar um backup do banco de dados (ex: `pie backup create`) antes de executar o reprocessamento. O reprocessamento salva revisões no banco, mas não atualiza automaticamente arquivos de notas Markdown em `notes/`.
+> Recomenda-se fortemente realizar um backup do banco de dados (ex: `pie backup create`) antes de executar o reprocessamento. O reprocessamento salva revisões no banco e regenera a nota Markdown de cada entrada reprocessada. A regeneração da nota ocorre após o commit no banco; se a escrita do arquivo falhar, o banco permanece correto mas a nota pode ficar desatualizada.
 >
 > O reprocessamento em lote usa transação por entrada, não all-or-nothing para o lote inteiro. Se uma entrada falhar, ela sofre rollback completo, enquanto entradas anteriores processadas com sucesso permanecem aplicadas. A saída do comando mostra total selecionado, total aplicado, total com falha, IDs aplicados, IDs com falha e erro resumido por ID com falha. `raw_entries.content` nunca é editado pelo reprocessamento.
 

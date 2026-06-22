@@ -151,12 +151,15 @@ pie review list
 pie review show <structured_entry_id>
 pie review approve <structured_entry_id>
 pie review reject <structured_entry_id>
+pie review edit <structured_entry_id> --summary "..." --project X --entry-type Y
 pie review history <structured_entry_id>
 pie entries reprocess <structured_entry_id> --dry-run
 pie entries reprocess <structured_entry_id>
 pie report daily --date YYYY-MM-DD
 pie report weekly --date YYYY-MM-DD
 pie report project --project <name>
+pie report decisions [--project <name>] [--since YYYY-MM-DD]
+pie report tasks [--project <name>]
 pie backup create
 pie export json
 pie export markdown
@@ -179,9 +182,9 @@ pie export markdown
 - Delete old backups if they are no longer needed and contain sensitive data.
 - After purging entries, review old backups, exports, notes, and reports because they may still contain data that no longer exists in the live database.
 
-## Handling Poor Extraction Without Review Edit
+## Handling Poor Extraction
 
-`pie review edit` is not implemented yet. If extraction is poor:
+If extraction classified an entry incorrectly, use `pie review edit` to fix the structured fields while preserving the original raw content:
 
 1. Inspect the entry:
 
@@ -190,23 +193,19 @@ pie review show <structured_entry_id>
 pie review history <structured_entry_id>
 ```
 
-2. Reject the bad structured extraction:
+2. Edit the structured fields directly:
+
+```bash
+pie review edit <structured_entry_id> --entry-type decision --summary "Corrected summary"
+pie review edit <structured_entry_id> --project PIE
+```
+
+This records a before/after revision in `structured_entry_revisions`, writes an audit log entry, and regenerates the Markdown note. The original `raw_entries.content` is never modified.
+
+3. For entries that are entirely wrong or irrelevant, reject them instead:
 
 ```bash
 pie review reject <structured_entry_id>
-```
-
-3. Add a corrected new entry with clearer wording:
-
-```bash
-pie add "Projeto: PIE. Tipo: decisão. Texto: Corrigindo entrada anterior: manter revisão humana antes da Assistant Layer. Tags: pie,review"
-```
-
-4. Use search/history to preserve traceability:
-
-```bash
-pie search "Corrigindo entrada anterior"
-pie review history <structured_entry_id>
 ```
 
 ## Deciding The Next Features
@@ -216,8 +215,7 @@ After seven days, prioritize features using these questions:
 - Which command caused repeated friction?
 - Did reports help real decisions, or only summarize obvious data?
 - How often did extraction need correction?
-- Is `review edit` necessary before Core v1 feels usable?
-- Did stale Markdown after reprocessing create confusion?
+- Did `review edit` feel sufficient for correcting poor extractions?
 - Was search good enough without embeddings?
 - Were backups and exports easy enough to trust?
 
