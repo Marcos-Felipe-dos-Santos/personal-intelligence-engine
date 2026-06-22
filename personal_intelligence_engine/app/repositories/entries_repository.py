@@ -164,7 +164,7 @@ class EntriesRepository:
         return dict(row)
 
     def get_review_candidate(self, structured_entry_id: str) -> dict | None:
-        """Fetch one structured entry with raw status for review decisions."""
+        """Fetch one non-deleted structured entry with raw status for review decisions."""
         row = self._db.fetchone(
             """
             SELECT
@@ -182,7 +182,9 @@ class EntriesRepository:
                 r.status AS raw_status
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
-            WHERE s.id = ?;
+            WHERE s.id = ?
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL;
             """,
             (structured_entry_id,),
         )

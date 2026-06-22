@@ -704,3 +704,55 @@ def test_review_edit_no_changes_returns_friendly_message(work_dir, monkeypatch):
     assert "no changes" in result.output.lower()
     revisions = _fetch_revisions(work_dir / "pie.db", structured_id)
     assert len(revisions) == 0
+
+
+def test_review_approve_deleted_entry_raises_error(work_dir, monkeypatch):
+    """Regression: approve must fail for soft-deleted entries."""
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica para aprovar")
+    CliRunner().invoke(cli, ["entries", "delete", "--yes", structured_id])
+
+    result = CliRunner().invoke(cli, ["review", "approve", structured_id])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_reject_deleted_entry_raises_error(work_dir, monkeypatch):
+    """Regression: reject must fail for soft-deleted entries."""
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica para rejeitar")
+    CliRunner().invoke(cli, ["entries", "delete", "--yes", structured_id])
+
+    result = CliRunner().invoke(cli, ["review", "reject", structured_id])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_show_deleted_entry_raises_error(work_dir, monkeypatch):
+    """Regression: show must fail for soft-deleted entries."""
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica para mostrar")
+    CliRunner().invoke(cli, ["entries", "delete", "--yes", structured_id])
+
+    result = CliRunner().invoke(cli, ["review", "show", structured_id])
+
+    assert result.exit_code != 0
+    assert "No review entry found" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_review_history_deleted_entry_raises_error(work_dir, monkeypatch):
+    """Regression: history must fail for soft-deleted entries."""
+    _configure_temp_env(monkeypatch, work_dir)
+    structured_id = _add_entry("Nota sintetica para historico")
+    CliRunner().invoke(cli, ["entries", "delete", "--yes", structured_id])
+
+    result = CliRunner().invoke(cli, ["review", "history", structured_id])
+
+    assert result.exit_code != 0
+    assert "No structured entry found for ID" in result.output
+    assert "Traceback" not in result.output
