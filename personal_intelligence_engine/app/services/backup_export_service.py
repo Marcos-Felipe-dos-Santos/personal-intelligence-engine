@@ -70,6 +70,8 @@ class BackupExportService:
             "structured_entry_revisions",
         ]
 
+        _ALLOWED_EXPORT_TABLES = frozenset(tables)
+
         data = {}
         conn = self.db.connection
         for table in tables:
@@ -81,7 +83,10 @@ class BackupExportService:
             if not cursor.fetchone():
                 continue
 
-            cursor = conn.execute(f"SELECT * FROM {table};")
+            if table not in _ALLOWED_EXPORT_TABLES:
+                continue
+
+            cursor = conn.execute(f"SELECT * FROM {table};")  # noqa: S608 — table validated against allowlist
             data[table] = [dict(row) for row in cursor.fetchall()]
 
         with open(export_file, "w", encoding="utf-8") as f:

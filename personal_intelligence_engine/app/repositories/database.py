@@ -44,12 +44,9 @@ class Database:
             self._conn.close()
             self._conn = None
 
-    def run_migrations(self) -> None:
-        """Apply all pending SQL migrations from the migrations directory."""
-        conn = self.connection
-
-        # Ensure schema_migrations table exists
-        conn.execute(
+    def _ensure_migrations_table(self) -> None:
+        """Create the schema_migrations table if it does not exist."""
+        self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version TEXT PRIMARY KEY,
@@ -57,6 +54,11 @@ class Database:
             );
             """
         )
+
+    def run_migrations(self) -> None:
+        """Apply all pending SQL migrations from the migrations directory."""
+        conn = self.connection
+        self._ensure_migrations_table()
         conn.commit()
 
         # Find applied versions
@@ -93,17 +95,7 @@ class Database:
     def pending_migrations(self) -> list[str]:
         """Return a list of migration versions that have not been applied yet."""
         conn = self.connection
-
-        # Ensure schema_migrations table exists
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                version TEXT PRIMARY KEY,
-                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-            """
-        )
-
+        self._ensure_migrations_table()
         cursor = conn.execute("SELECT version FROM schema_migrations ORDER BY version;")
         applied = {row["version"] for row in cursor.fetchall()}
 
@@ -117,17 +109,7 @@ class Database:
     def applied_migrations(self) -> list[tuple[str, str]]:
         """Return a list of (version, applied_at) for all applied migrations."""
         conn = self.connection
-
-        # Ensure schema_migrations table exists
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                version TEXT PRIMARY KEY,
-                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-            """
-        )
-
+        self._ensure_migrations_table()
         cursor = conn.execute(
             "SELECT version, applied_at FROM schema_migrations ORDER BY version;"
         )
