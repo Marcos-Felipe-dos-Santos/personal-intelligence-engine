@@ -58,6 +58,30 @@ class EntriesRepository:
         )
         self._db.commit()
 
+    def list_retry_candidates(self, limit: int = 50) -> list[dict]:
+        """List recoverable IDs without exposing stored text."""
+        rows = self._db.fetchall(
+            """
+            SELECT r.id, r.status, r.created_at FROM raw_entries r
+            WHERE r.deleted_at IS NULL AND r.status IN ('error', 'pending')
+              AND NOT EXISTS (SELECT 1 FROM structured_entries s WHERE s.raw_entry_id = r.id)
+            ORDER BY r.created_at LIMIT ?;
+            """,
+            (limit,),
+        )
+        return [dict(row) for row in rows]
+
+    def get_retry_candidate(self, raw_entry_id: str) -> RawEntry | None:
+        row = self._db.fetchone(
+            """
+            SELECT r.* FROM raw_entries r
+            WHERE r.id = ? AND r.deleted_at IS NULL AND r.status IN ('error', 'pending')
+              AND NOT EXISTS (SELECT 1 FROM structured_entries s WHERE s.raw_entry_id = r.id);
+            """,
+            (raw_entry_id,),
+        )
+        return RawEntry(**dict(row)) if row is not None else None
+
     # --- Structured Entries ---
 
     def insert_structured_entry(self, entry: StructuredEntry) -> None:
@@ -164,7 +188,7 @@ class EntriesRepository:
         return dict(row)
 
     def get_review_candidate(self, structured_entry_id: str) -> dict | None:
-        """Fetch one structured entry with raw status for review decisions."""
+        """Fetch one non-deleted structured entry with raw status for review decisions."""
         row = self._db.fetchone(
             """
             SELECT
@@ -182,7 +206,9 @@ class EntriesRepository:
                 r.status AS raw_status
             FROM structured_entries s
             JOIN raw_entries r ON r.id = s.raw_entry_id
-            WHERE s.id = ?;
+            WHERE s.id = ?
+              AND s.deleted_at IS NULL
+              AND r.deleted_at IS NULL;
             """,
             (structured_entry_id,),
         )

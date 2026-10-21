@@ -213,7 +213,7 @@ class ReprocessService:
             raise RuntimeError(
                 f"Reprocessed structured entry '{structured_entry_id}' could not be reloaded."
             )
-        self.markdown_service.generate_note(updated_structured_entry, raw_content)
+        projection = self.markdown_service.refresh_note(updated_structured_entry, raw_content)
 
         return {
             "structured_entry_id": structured_entry_id,
@@ -221,6 +221,7 @@ class ReprocessService:
             "comparison": comparison,
             "has_changes": has_changes,
             "dry_run": False,
+            **projection,
         }
 
     def _extractor_method(self) -> str:

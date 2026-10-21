@@ -36,7 +36,15 @@ PIE_BACKUP_DIR=C:\path\to\private\backups
 PIE_EXPORT_DIR=C:\path\to\private\exports
 ```
 
-`PIE_HOME` is not implemented yet; keep path configuration explicit for now.
+The recommended solution is to set `PIE_HOME` as a fixed root directory. When `PIE_HOME` is set, all relative paths resolve under it, regardless of the current working directory:
+
+```env
+PIE_HOME=C:\path\to\private\pie-data
+```
+
+With `PIE_HOME` set, `pie doctor` shows the resolved root and all paths underneath it. You can still override individual paths with absolute values in `.env` — absolute paths always take precedence over `PIE_HOME`.
+
+If you choose not to set `PIE_HOME`, keep path configuration explicit as shown above and always run `pie` from the same working directory.
 
 ## Default FakeExtractor
 

@@ -19,6 +19,9 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - `pie add "text"` captures a raw entry, extracts structured data, validates it, writes a Markdown note, and records audit events. Supports `--auto-approve` to bypass review.
 - `pie doctor` checks the configured extractor backend and lists pending and applied migrations. Supports `--deep` to perform a test extraction.
 - `pie entries list` lists structured entries with optional filters.
+- `pie entries failed` lists recoverable pending/error raw IDs without content.
+- `pie entries retry <raw_entry_id>` resumes extraction of a preserved input without duplicating it.
+- `pie entries rebuild-note <structured_entry_id>` rebuilds a note from SQLite without extraction.
 - `pie entries show <structured_entry_id>` shows details for one structured entry.
 - `pie entries delete <structured_entry_id>` soft-deletes a structured entry and its raw entry.
 - `pie entries restore <structured_entry_id>` restores a soft-deleted entry.
@@ -32,10 +35,13 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - `pie review show <structured_entry_id>` shows one review entry.
 - `pie review approve <structured_entry_id>` approves a review entry.
 - `pie review reject <structured_entry_id>` rejects a review entry.
+- `pie review edit <structured_entry_id>` edits structured fields (summary, project, entry_type) while preserving raw content, recording a before/after revision and regenerating the Markdown note.
 - `pie review history <structured_entry_id>` shows audit history for the related raw entry.
 - `pie report daily --date YYYY-MM-DD` generates a daily report for the configured local day.
 - `pie report weekly --date YYYY-MM-DD` generates a Monday-to-Sunday weekly report for the local week containing the date.
 - `pie report project --project <name>` generates a project-specific report.
+- `pie report decisions` generates a report of all decision entries, with optional `--project` and `--since` filters.
+- `pie report tasks` generates a report of pending task entries, with optional `--project` filter.
 - `pie backup create` creates a local SQLite backup.
 - `pie export json` exports core database tables to JSON.
 - `pie export markdown` exports structured entries as grouped Markdown summaries.
@@ -71,26 +77,31 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - Deterministic `FakeExtractor` as the default extractor.
 - Optional Ollama-compatible local LLM extractor.
 - Markdown notes as projections in `notes/`.
-- Daily, weekly, and project Markdown reports in `reports/`.
+- Daily, weekly, project, decisions, and tasks Markdown reports in `reports/`.
 - Local timezone handling for daily and weekly report ranges.
 - Audit logs for pipeline events, report generation, review actions, and reprocessing.
 - Entries list/show and local textual search.
 - Human review list/show/approve/reject/history.
-- Safe reprocessing with dry-run, per-entry transactions, rollback on failure, and structured revision snapshots.
+- Human review edit with before/after revision snapshots and Markdown regeneration.
+- Safe reprocessing with dry-run, per-entry transactions, rollback on failure, structured revision snapshots, and Markdown note regeneration.
+- Focused reports: decisions (with optional project and date filters) and pending tasks (with optional project filter).
+- Entry soft-delete, restore, and purge with Markdown file cleanup.
+- Configurable `PIE_HOME` as fixed root for all data paths.
+- Remote Ollama URL blocking by default (`PIE_ALLOW_REMOTE_OLLAMA` override).
 - Backup/export commands.
 - Synthetic extraction quality fixtures, deterministic scoring, runner, Markdown report, and CLI.
-- CI workflow for tests, Ruff, and compileall.
+- CI matrix for Windows/Ubuntu and Python 3.10–3.13: tests, Ruff, compileall, wheel build and installed-wheel smoke.
+- Atomic SQL migrations with version recording and foreign-key verification before commit.
+- Explicit stale-note warnings after committed writes, and atomic replacement of Markdown files.
+- Controlled test and recovery checklist: [test_readiness.pt-BR.md](test_readiness.pt-BR.md).
 
 ## Partially Prepared But Not Implemented
 
-- `structured_entry_revisions` prepares the data model for future `pie review edit`, but the edit command itself is not implemented.
 - The Assistant Layer is documented as a future layer, but no assistant runtime, intent router, tool registry, approval layer, or external integration exists in code.
 - Approval policies are documented for future assistant/external actions, but there is no general approval framework yet.
 
 ## Not Implemented Yet
 
-- `pie review edit <id>`.
-- Recommended real-use workflow documentation from capture through review, reprocessing, reports, backup, and export.
 - Polished UX for longer real-world usage sessions.
 - External integrations such as calendar, email, messaging, ActivityWatch, Wakapi, MCP, or browser automation.
 - RAG, embeddings, vector database, semantic search, or model benchmarking.
@@ -102,10 +113,10 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - PIE is alpha software and still needs controlled real-world usage before Core v1 can be considered mature.
 - Reports are grounded in local captured entries only; they do not know about uncaptured work or external systems.
 - Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch; users must review partial-success summaries.
-- Markdown notes are projections and can become stale after reprocessing or future edits.
+- Markdown notes are projections and can become stale if note regeneration fails during reprocessing or review editing.
 - Project reports require exact project-name matches.
 - Optional Ollama extraction is experimental and depends on local model behavior.
-- Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality.
+- Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality. The fake backend currently averages approximately 0.5226 with 0/9 passing fixtures; an explicit `--min-score` option can enforce an average-score threshold without changing the evaluation expectations.
 - Local files are plaintext unless protected by the operating system.
 
 ## Technical Risks
@@ -113,7 +124,7 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - SQLite is simple and portable, but future concurrent workflows will need careful transaction boundaries.
 - Confidence scores are extractor-specific and not calibrated across extractors.
 - Optional local LLM output can vary by model, prompt, and machine.
-- Reprocessing updates structured entries and records revisions, but does not regenerate Markdown automatically.
+- Reprocessing and review editing regenerate Markdown notes, but the regeneration occurs outside the database transaction; if the file write fails, the CLI reports the committed change separately from the stale projection and displays a rebuild command.
 - Reports rely on entry timestamps and configured timezone; timezone assumptions must remain tested.
 - Search is local textual search, not semantic retrieval.
 

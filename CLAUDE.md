@@ -18,8 +18,8 @@ CLI (cli/commands.py) -> PIEApp (main.py) -> Services -> Repositories -> SQLite
                                                       Adapters (extractor, markdown)
 
 Modulos principais:
-- app/cli/commands.py — entrypoint Click (945 linhas, god module a dividir)
-- app/main.py — PIEApp, orquestrador (809 linhas)
+- app/cli/commands.py — entrypoint Click (1065 linhas, god module a dividir)
+- app/main.py — PIEApp, orquestrador (1060 linhas, god module a dividir)
 - app/domain/schemas.py — contratos Pydantic
 - app/services/ — ingestion, extraction, validation, report, reprocess, backup_export, audit
 - app/repositories/ — database, entries, audit, reports, revisions
@@ -44,7 +44,7 @@ Modulos principais:
 5. FakeExtractor e heuristico — confidence nao e qualidade real. Usar --project/--type/--tag.
    Aviso documentado no codigo (fake_extractor.py), comportamento esperado.
 
-## Gargalos resolvidos (PRs 7-10)
+## Gargalos resolvidos (PRs 7-11)
 1. Ollama remoto bloqueado por padrao — PIE_ALLOW_REMOTE_OLLAMA=true como override.
    Implementado em local_llm_extractor._validate_base_url (PR 7).
 2. PIE_HOME implementado — raiz fixa configuravel, todos os paths resolvidos sob ela.
@@ -53,6 +53,7 @@ Modulos principais:
    unlink(missing_ok=True) por arquivo, falhas reportadas sem abortar (PR 8).
 4. pie review edit implementado — structured_entry_revisions com snapshot before/after,
    audit log REVIEW_EDITED, transacao atomica (PR 10).
+5. Relatorios focados: pie report decisions e pie report tasks (PR 11).
 
 ## Dados sensiveis — NUNCA tocar
 - .env, pie.db, notes/, reports/, backups/, exports/ contem dados pessoais reais

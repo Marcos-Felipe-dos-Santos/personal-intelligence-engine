@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Load .env from project root if available
 _project_root = Path(__file__).resolve().parent.parent.parent
 _env_file = _project_root / ".env"
-if _env_file.exists():
+if os.getenv("PYTHON_DOTENV_DISABLED") != "1" and _env_file.exists():
     load_dotenv(_env_file)
 
 
@@ -46,7 +46,7 @@ class Config:
         self.database_path = self._resolve_path(database_path, "PIE_DATABASE_PATH", "pie.db")
         self.notes_dir = self._resolve_path(notes_dir, "PIE_NOTES_DIR", "notes")
         self.reports_dir = self._resolve_path(reports_dir, "PIE_REPORTS_DIR", "reports")
-        self.migrations_dir = Path(migrations_dir or _project_root / "migrations")
+        self.migrations_dir = Path(migrations_dir or Path(__file__).resolve().parent / "migrations")
         self.backup_dir = self._resolve_path(backup_dir, "PIE_BACKUP_DIR", "backups")
         self.export_dir = self._resolve_path(export_dir, "PIE_EXPORT_DIR", "exports")
         self.log_level = log_level or os.getenv("PIE_LOG_LEVEL", "INFO")

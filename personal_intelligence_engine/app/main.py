@@ -15,6 +15,7 @@ from personal_intelligence_engine.app.config import Config
 from personal_intelligence_engine.app.domain.schemas import (
     AuditLogCreate,
     ExtractionResult,
+    RawEntry,
     RawEntryCreate,
     StructuredEntryRevision,
 )
@@ -145,6 +146,26 @@ class PIEApp:
                 )
             )
 
+        return self._process_raw_entry(raw, project=project, entry_type=entry_type, tags=tags, auto_approve=auto_approve)
+
+    def retry_raw_entry(self, raw_entry_id: str) -> dict:
+        """Retry an unstructured pending/error entry without creating or editing raw text."""
+        raw = self.entries_repo.get_retry_candidate(raw_entry_id)
+        if raw is None:
+            raise ValueError(f"No recoverable raw entry found for ID '{raw_entry_id}'.")
+        return self._process_raw_entry(raw)
+
+    def _process_raw_entry(
+        self,
+        raw: RawEntry,
+        *,
+        project: str | None = None,
+        entry_type: str | None = None,
+        tags: list[str] | None = None,
+        auto_approve: bool = False,
+    ) -> dict:
+        """Structure a preserved raw entry; pending entries can also be retried after a rollback."""
+        text = raw.content
         # 2. Extract structured data
         try:
             extraction = self.extraction.extract(text)
@@ -153,7 +174,7 @@ class PIEApp:
                 self.entries_repo.update_raw_entry_status(
                     raw.id,
                     EntryStatus.ERROR.value,
-                    raw.updated_at,
+                    datetime.now(timezone.utc).isoformat(),
                 )
                 self.audit.log(
                     AuditLogCreate(
@@ -479,7 +500,9 @@ class PIEApp:
                 )
             )
 
+        projection = self.rebuild_note(structured_entry_id)
         return {
+            **projection,
             "status": "approved",
             "structured_entry_id": row["structured_entry_id"],
             "raw_entry_id": row["raw_entry_id"],
@@ -517,7 +540,9 @@ class PIEApp:
                 )
             )
 
+        projection = self.rebuild_note(structured_entry_id)
         return {
+            **projection,
             "status": "rejected",
             "structured_entry_id": row["structured_entry_id"],
             "raw_entry_id": row["raw_entry_id"],
@@ -549,10 +574,6 @@ class PIEApp:
         # Validate field values before any DB access
         if summary is not None and not summary.strip():
             raise ValueError("summary must not be empty.")
-        # Normalize empty project string to NULL
-        if project is not None and not project.strip():
-            project = None
-
         # get_entry_detail enforces deleted_at IS NULL on both tables, so it
         # naturally blocks edits on soft-deleted entries and provides raw_content.
         detail = self.entries_repo.get_entry_detail(structured_entry_id)
@@ -573,7 +594,7 @@ class PIEApp:
             payload = {}
 
         new_summary = summary if summary is not None else structured.summary
-        new_project = project if project is not None else structured.project
+        new_project = (project.strip() or None) if project is not None else structured.project
         new_entry_type = EntryType(entry_type) if entry_type is not None else structured.entry_type
 
         payload["summary"] = new_summary
@@ -679,7 +700,7 @@ class PIEApp:
         # Markdown is regenerated outside the transaction so a write failure
         # does not roll back the DB update. The DB is the source of truth;
         # the .md is a projection that can be rebuilt. (Same pattern as ReprocessService.)
-        self.markdown.generate_note(updated_structured, raw_content)
+        projection = self.markdown.refresh_note(updated_structured, raw_content)
 
         return {
             "structured_entry_id": structured_entry_id,
@@ -696,7 +717,16 @@ class PIEApp:
             },
             "changed_fields": changed_fields,
             "message": f"Entry updated. {len(changed_fields)} field(s) changed.",
+            **projection,
         }
+
+    def rebuild_note(self, structured_entry_id: str) -> dict:
+        """Rebuild one active note from SQLite without rerunning extraction."""
+        detail = self.get_entry_detail(structured_entry_id)
+        entry = self.entries_repo.get_structured_entry(structured_entry_id)
+        if entry is None:
+            raise ValueError(f"No structured entry found for ID '{structured_entry_id}'.")
+        return self.markdown.refresh_note(entry, detail["raw_content"])
 
     # --- Entries List / Show / Search ---
 

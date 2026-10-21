@@ -6,7 +6,7 @@ from pathlib import Path
 
 from personal_intelligence_engine.app.domain.types import EntryType
 
-FIXTURES_PATH = Path(__file__).resolve().parent / "fixtures" / "extraction_quality_cases.json"
+FIXTURES_PATH = Path(__file__).resolve().parents[1] / "personal_intelligence_engine" / "app" / "evaluation" / "fixtures" / "extraction_quality_cases.json"
 
 REQUIRED_CASE_FIELDS = {"id", "input_text", "expected"}
 REQUIRED_EXPECTED_FIELDS = {
