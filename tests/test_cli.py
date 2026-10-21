@@ -65,9 +65,10 @@ def test_doctor_fake_backend_passes(monkeypatch, work_dir):
     assert result.exit_code == 0
     assert "Extractor backend: fake" in result.output
     assert "FakeExtractor is available" in result.output
-    assert f"Database: {work_dir / 'pie.db'}" in result.output
-    assert f"Notes: {work_dir / 'notes'}" in result.output
-    assert f"Reports: {work_dir / 'reports'}" in result.output
+    # Doctor resolves Windows 8.3 aliases (e.g. RUNNER~1) to canonical paths.
+    assert f"Database: {(work_dir / 'pie.db').resolve()}" in result.output
+    assert f"Notes: {(work_dir / 'notes').resolve()}" in result.output
+    assert f"Reports: {(work_dir / 'reports').resolve()}" in result.output
     assert not (work_dir / "pie.db").exists()
 
 
@@ -83,7 +84,7 @@ def test_doctor_warns_about_relative_paths(monkeypatch, work_dir):
     result = CliRunner().invoke(cli, ["doctor"])
 
     assert result.exit_code == 0
-    assert f"Database: {work_dir / 'relative-pie.db'} [relative]" in result.output
+    assert f"Database: {(work_dir / 'relative-pie.db').resolve()} [relative]" in result.output
     assert "Relative path detected" in result.output
     assert "different working directory may create/use a different database" in result.output
     assert not (work_dir / "relative-pie.db").exists()
