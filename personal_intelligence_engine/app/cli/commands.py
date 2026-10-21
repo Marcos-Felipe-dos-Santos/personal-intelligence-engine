@@ -20,9 +20,9 @@ from personal_intelligence_engine.app.evaluation.report import (
 )
 from personal_intelligence_engine.app.evaluation.runner import evaluate_extractor
 from personal_intelligence_engine.app.main import PIEApp, check_extractor_backend
+from personal_intelligence_engine.app.repositories.database import Database
 
-ROOT = Path(__file__).resolve().parents[3]
-EXTRACTION_QUALITY_FIXTURES = ROOT / "tests" / "fixtures" / "extraction_quality_cases.json"
+EXTRACTION_QUALITY_FIXTURES = Path(__file__).resolve().parents[1] / "evaluation" / "fixtures" / "extraction_quality_cases.json"
 
 
 def _format_validation_error(exc: ValidationError) -> str:
@@ -58,6 +58,11 @@ def _path_display(path: Path) -> tuple[str, bool]:
     return str(expanded.resolve()), not expanded.is_absolute()
 
 
+def _render_projection_warning(result: dict) -> None:
+    if result.get("warning"):
+        click.echo(f"[WARNING] {result['warning']}")
+
+
 def _render_reprocess_batch_summary(batch: dict, dry_run: bool) -> None:
     """Render batch reprocess totals without exposing raw content."""
     applied = batch["applied"]
@@ -69,6 +74,9 @@ def _render_reprocess_batch_summary(batch: dict, dry_run: bool) -> None:
     click.echo(f"  Total selected: {len(selected_ids)}")
     click.echo(f"  Total {processed_label.lower()}: {len(applied)}")
     click.echo(f"  Total failed:   {len(failed)}")
+    stale = sum(item.get("projection_status") == "stale" for item in applied)
+    if stale:
+        click.echo(f"  Notes needing rebuild: {stale}")
     click.echo(f"  {processed_label} IDs:")
     if applied:
         for result in applied:
@@ -183,12 +191,12 @@ def doctor(deep: bool) -> None:
             if config.migrations_dir.exists():
                 pending = [f.stem for f in sorted(config.migrations_dir.glob("*.sql"))]
         else:
-            app = PIEApp(config)
+            db = Database(config)
             try:
-                pending = app.db.pending_migrations()
-                applied = app.db.applied_migrations()
+                pending = db.pending_migrations()
+                applied = db.applied_migrations()
             finally:
-                app.close()
+                db.close()
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
 
@@ -273,7 +281,9 @@ def evaluate() -> None:
     type=click.Path(dir_okay=False, path_type=Path),
     help="Optional Markdown output path.",
 )
-def evaluate_extraction(backend: str, output: Path | None) -> None:
+@click.option("--min-score", type=click.FloatRange(min=0, max=1), default=None,
+              help="Fail if the synthetic average score is below this explicit threshold.")
+def evaluate_extraction(backend: str, output: Path | None, min_score: float | None) -> None:
     """Run extraction quality evaluation and render Markdown."""
     try:
         extractor = _build_evaluation_extractor(backend)
@@ -286,9 +296,12 @@ def evaluate_extraction(backend: str, output: Path | None) -> None:
         if output is not None:
             saved_path = write_extraction_evaluation_report(run, output)
             click.echo(f"[OK] Extraction evaluation report saved: {saved_path}")
-            return
-
-        click.echo(render_extraction_evaluation_report(run))
+        else:
+            click.echo(render_extraction_evaluation_report(run))
+        if min_score is not None and run.average_score < min_score:
+            raise click.ClickException(
+                f"Extraction quality below threshold: {run.average_score:.2%} < {min_score:.2%}."
+            )
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
 
@@ -426,6 +439,7 @@ def review_approve(structured_entry_id: str) -> None:
             click.echo(f"   Raw Entry ID:        {result['raw_entry_id']}")
             click.echo("   Status:              processed")
             click.echo("   Validation:          valid")
+        _render_projection_warning(result)
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
     finally:
@@ -475,6 +489,7 @@ def review_edit(
         click.echo(f"   Structured Entry ID: {result['structured_entry_id']}")
         click.echo(f"   Raw Entry ID:        {result['raw_entry_id']}")
 
+        _render_projection_warning(result)
         if result["changed_fields"]:
             click.echo(f"   Changed fields:      {', '.join(result['changed_fields'])}")
             before = result["before"]
@@ -509,6 +524,7 @@ def review_reject(structured_entry_id: str) -> None:
             click.echo(f"   Raw Entry ID:        {result['raw_entry_id']}")
             click.echo("   Status:              processed")
             click.echo("   Validation:          invalid")
+        _render_projection_warning(result)
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
     finally:
@@ -819,6 +835,7 @@ def entries_reprocess(
             mode_str = " (Dry Run)" if dry_run else ""
 
             click.echo(f"Structured Entry ID: {entry_id}{mode_str}")
+            _render_projection_warning(res)
             if not has_changes:
                 click.echo("  No changes detected.")
                 click.echo("")
@@ -847,8 +864,66 @@ def entries_reprocess(
             if batch is not None and batch["failed"]:
                 click.echo("[WARNING] Reprocessamento concluido com falhas parciais.")
             else:
-                click.echo("[OK] Reprocessamento aplicado com sucesso!")
+                if any(res.get("projection_status") == "stale" for res in results):
+                    click.echo("[WARNING] Banco atualizado; ha notas Markdown pendentes de reconstrucao.")
+                else:
+                    click.echo("[OK] Reprocessamento aplicado com sucesso!")
 
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="failed")
+@click.option("--limit", default=50, type=click.IntRange(min=1), show_default=True)
+def entries_failed(limit: int) -> None:
+    """List pending/error raw entries that can be retried (IDs only)."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        rows = app.entries_repo.list_retry_candidates(limit)
+        for row in rows:
+            click.echo(f"{row['id']}  {row['status']}  {row['created_at']}")
+        if not rows:
+            click.echo("No recoverable raw entries.")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="retry")
+@click.argument("raw_entry_id")
+def entries_retry(raw_entry_id: str) -> None:
+    """Retry extraction of a preserved raw entry without duplicating it."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.retry_raw_entry(raw_entry_id)
+        click.echo(f"[OK] Raw entry recovered: {result['entry_id']}")
+        click.echo(f"   Structured ID: {result['structured_entry_id']}")
+        click.echo(f"   Validation:    {result['validation_status']}")
+    except (ValidationError, ValueError, OSError) as exc:
+        raise click.ClickException(_format_cli_error(exc)) from exc
+    finally:
+        if app is not None:
+            app.close()
+
+
+@entries.command(name="rebuild-note")
+@click.argument("structured_entry_id")
+def entries_rebuild_note(structured_entry_id: str) -> None:
+    """Rebuild a Markdown note from the database without changing its contents."""
+    app: PIEApp | None = None
+    try:
+        app = PIEApp()
+        result = app.rebuild_note(structured_entry_id)
+        if result["projection_status"] == "stale":
+            raise click.ClickException(result["warning"])
+        click.echo(f"[OK] Markdown note rebuilt: {result['note_path']}")
     except (ValidationError, ValueError, OSError) as exc:
         raise click.ClickException(_format_cli_error(exc)) from exc
     finally:

@@ -29,6 +29,7 @@ dependencies = [
     "click>=8.1",
     "pydantic>=2.0",
     "python-dotenv>=1.0",
+    "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,9 @@ pie = "personal_intelligence_engine.app.cli.commands:cli"
 
 [tool.setuptools.packages.find]
 include = ["personal_intelligence_engine*"]
+
+[tool.setuptools.package-data]
+"personal_intelligence_engine.app" = ["migrations/*.sql", "prompts/*.md", "evaluation/fixtures/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

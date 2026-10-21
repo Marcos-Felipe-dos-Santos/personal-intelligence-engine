@@ -19,6 +19,9 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - `pie add "text"` captures a raw entry, extracts structured data, validates it, writes a Markdown note, and records audit events. Supports `--auto-approve` to bypass review.
 - `pie doctor` checks the configured extractor backend and lists pending and applied migrations. Supports `--deep` to perform a test extraction.
 - `pie entries list` lists structured entries with optional filters.
+- `pie entries failed` lists recoverable pending/error raw IDs without content.
+- `pie entries retry <raw_entry_id>` resumes extraction of a preserved input without duplicating it.
+- `pie entries rebuild-note <structured_entry_id>` rebuilds a note from SQLite without extraction.
 - `pie entries show <structured_entry_id>` shows details for one structured entry.
 - `pie entries delete <structured_entry_id>` soft-deletes a structured entry and its raw entry.
 - `pie entries restore <structured_entry_id>` restores a soft-deleted entry.
@@ -87,7 +90,10 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - Remote Ollama URL blocking by default (`PIE_ALLOW_REMOTE_OLLAMA` override).
 - Backup/export commands.
 - Synthetic extraction quality fixtures, deterministic scoring, runner, Markdown report, and CLI.
-- CI workflow for tests, Ruff, and compileall.
+- CI matrix for Windows/Ubuntu and Python 3.10–3.13: tests, Ruff, compileall, wheel build and installed-wheel smoke.
+- Atomic SQL migrations with version recording and foreign-key verification before commit.
+- Explicit stale-note warnings after committed writes, and atomic replacement of Markdown files.
+- Controlled test and recovery checklist: [test_readiness.pt-BR.md](test_readiness.pt-BR.md).
 
 ## Partially Prepared But Not Implemented
 
@@ -96,7 +102,6 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 
 ## Not Implemented Yet
 
-- Recommended real-use workflow documentation from capture through review, reprocessing, reports, backup, and export.
 - Polished UX for longer real-world usage sessions.
 - External integrations such as calendar, email, messaging, ActivityWatch, Wakapi, MCP, or browser automation.
 - RAG, embeddings, vector database, semantic search, or model benchmarking.
@@ -111,7 +116,7 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - Markdown notes are projections and can become stale if note regeneration fails during reprocessing or review editing.
 - Project reports require exact project-name matches.
 - Optional Ollama extraction is experimental and depends on local model behavior.
-- Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality.
+- Extraction evaluation is synthetic and lexical; it does not prove real-world semantic quality. The fake backend currently averages approximately 0.5226 with 0/9 passing fixtures; an explicit `--min-score` option can enforce an average-score threshold without changing the evaluation expectations.
 - Local files are plaintext unless protected by the operating system.
 
 ## Technical Risks
@@ -119,7 +124,7 @@ The future Assistant Layer is documented but not implemented. There is no RAG, e
 - SQLite is simple and portable, but future concurrent workflows will need careful transaction boundaries.
 - Confidence scores are extractor-specific and not calibrated across extractors.
 - Optional local LLM output can vary by model, prompt, and machine.
-- Reprocessing and review editing regenerate Markdown notes, but the regeneration occurs outside the database transaction; if the file write fails, the note may be stale while the database remains correct.
+- Reprocessing and review editing regenerate Markdown notes, but the regeneration occurs outside the database transaction; if the file write fails, the CLI reports the committed change separately from the stale projection and displays a rebuild command.
 - Reports rely on entry timestamps and configured timezone; timezone assumptions must remain tested.
 - Search is local textual search, not semantic retrieval.
 

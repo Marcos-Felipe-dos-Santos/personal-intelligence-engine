@@ -12,7 +12,7 @@ from personal_intelligence_engine.app.evaluation.runner import (
     load_extraction_quality_cases,
 )
 
-FIXTURES_PATH = Path(__file__).resolve().parent / "fixtures" / "extraction_quality_cases.json"
+FIXTURES_PATH = Path(__file__).resolve().parents[1] / "personal_intelligence_engine" / "app" / "evaluation" / "fixtures" / "extraction_quality_cases.json"
 
 
 class ControlledExtractor:

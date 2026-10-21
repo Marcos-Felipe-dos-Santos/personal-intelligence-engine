@@ -67,10 +67,9 @@ class Database:
 
         # Find migration files
         migrations_dir = self._config.migrations_dir
-        if not migrations_dir.exists():
-            return
-
         migration_files = sorted(migrations_dir.glob("*.sql"))
+        if not migration_files:
+            raise ValueError(f"No SQL migrations found in '{migrations_dir}'. Check the PIE installation.")
 
         for migration_file in migration_files:
             version = migration_file.stem  # e.g. "001_initial_schema"
@@ -80,24 +79,30 @@ class Database:
             logger.info("Applying migration: %s", version)
 
             sql = migration_file.read_text(encoding="utf-8")
-            conn.executescript(sql)
-            conn.execute(
-                "INSERT INTO schema_migrations (version) VALUES (?);",
-                (version,),
-            )
-            conn.commit()
-
-            # Verify the migration was recorded
-            self._verify_migration(version)
+            # executescript commits any existing transaction. Start the transaction
+            # inside the script so DDL, data changes and version are committed together.
+            conn.execute("PRAGMA foreign_keys=OFF;")
+            try:
+                conn.executescript("BEGIN IMMEDIATE;\n" + sql)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version) VALUES (?);",
+                    (version,),
+                )
+                self._verify_migration(version)
+                if conn.execute("PRAGMA foreign_key_check;").fetchone() is not None:
+                    raise ValueError(f"Migration '{version}' violates foreign key constraints.")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.execute("PRAGMA foreign_keys=ON;")
 
             logger.info("Migration applied successfully: %s", version)
 
     def pending_migrations(self) -> list[str]:
         """Return a list of migration versions that have not been applied yet."""
-        conn = self.connection
-        self._ensure_migrations_table()
-        cursor = conn.execute("SELECT version FROM schema_migrations ORDER BY version;")
-        applied = {row["version"] for row in cursor.fetchall()}
+        applied = {version for version, _ in self.applied_migrations()}
 
         migrations_dir = self._config.migrations_dir
         if not migrations_dir.exists():
@@ -109,7 +114,8 @@ class Database:
     def applied_migrations(self) -> list[tuple[str, str]]:
         """Return a list of (version, applied_at) for all applied migrations."""
         conn = self.connection
-        self._ensure_migrations_table()
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations';").fetchone() is None:
+            return []
         cursor = conn.execute(
             "SELECT version, applied_at FROM schema_migrations ORDER BY version;"
         )

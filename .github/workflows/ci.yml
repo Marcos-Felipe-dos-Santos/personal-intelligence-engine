@@ -6,16 +6,18 @@ on:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version:
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
 
     steps:
       - name: Checkout
@@ -40,3 +42,9 @@ jobs:
 
       - name: Compile
         run: python -m compileall personal_intelligence_engine
+
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --wheel-dir dist
+
+      - name: Smoke installed wheel outside checkout
+        run: python -c "import pathlib, subprocess, sys; subprocess.run([sys.executable, 'tests/smoke_installed_wheel.py', str(next(pathlib.Path('dist').glob('*.whl')))], check=True)"

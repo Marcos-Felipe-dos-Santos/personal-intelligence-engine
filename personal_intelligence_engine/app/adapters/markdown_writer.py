@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 
 from personal_intelligence_engine.app.domain.schemas import (
@@ -40,7 +42,16 @@ class MarkdownWriter:
         # Write file
         filename = f"{entry.id}.md"
         filepath = self._notes_dir / filename
-        filepath.write_text(md_content, encoding="utf-8")
+        # Replace atomically so a failed write leaves the previous note intact.
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self._notes_dir, delete=False) as temporary:
+                temporary_path = Path(temporary.name)
+                temporary.write(md_content)
+            os.replace(temporary_path, filepath)
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
 
         content_hash = hashlib.sha256(md_content.encode("utf-8")).hexdigest()
 
@@ -80,7 +91,7 @@ class MarkdownWriter:
         lines.append("")
 
         # Low confidence warning
-        if entry.confidence < LOW_CONFIDENCE_THRESHOLD:
+        if entry.confidence < LOW_CONFIDENCE_THRESHOLD and entry.validation_status == "needs_review":
             lines.append(f"> ⚠️ **Low confidence** ({entry.confidence:.0%}). This entry needs human review.")
             lines.append("")
 

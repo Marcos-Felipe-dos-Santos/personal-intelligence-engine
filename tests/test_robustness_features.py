@@ -245,7 +245,7 @@ def test_migration_introspection(monkeypatch, work_dir):
         database_path=work_dir / "pie_migration_test.db",
         notes_dir=work_dir / "notes",
         reports_dir=work_dir / "reports",
-        migrations_dir=Path(__file__).resolve().parent.parent / "migrations",
+        migrations_dir=Path(__file__).resolve().parent.parent / "personal_intelligence_engine" / "app" / "migrations",
         extractor_backend="fake",
     )
 

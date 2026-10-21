@@ -35,3 +35,17 @@ class MarkdownService:
         generated = self._writer.write_note(entry, raw_content)
         self._entries_repo.insert_generated_file(generated)
         return generated
+
+    def refresh_note(self, entry: StructuredEntry, raw_content: str) -> dict:
+        """Refresh a projection after a committed write, reporting disk failures separately."""
+        try:
+            generated = self.generate_note(entry, raw_content)
+        except OSError:
+            return {
+                "projection_status": "stale",
+                "warning": (
+                    "Database changes are saved, but the Markdown note could not be updated. "
+                    f"Check file permissions and run 'pie entries rebuild-note {entry.id}'."
+                ),
+            }
+        return {"projection_status": "updated", "note_path": generated.path}

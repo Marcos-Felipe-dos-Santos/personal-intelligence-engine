@@ -1,7 +1,7 @@
 # PIE — Personal Intelligence Engine
 
 ![CI](https://github.com/Marcos-Felipe-dos-Santos/personal-intelligence-engine/actions/workflows/ci.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 A **local-first** engine for capturing, structuring, and projecting personal knowledge.
@@ -10,7 +10,9 @@ PIE captures unstructured text entries, extracts structured data, validates it, 
 
 ## Status
 
-PIE is experimental alpha software. It is intended for local development and synthetic examples at this stage, not as a finished privacy product.
+PIE Core is experimental alpha software with a local CLI workflow for capture, human review, search, reports, and recovery. It is ready to begin a controlled pilot with synthetic data. The Assistant Layer is not implemented yet.
+
+Local validation on Windows with Python 3.13 passed **405 tests**, Ruff, compilation, and an installed-wheel smoke test outside the repository. CI is configured for Windows and Ubuntu with Python 3.10 through 3.13. A real Ollama model and the seven-day pilot still need validation. Start with the [controlled test checklist (Portuguese)](docs/test_readiness.pt-BR.md).
 
 ## Privacy First
 
@@ -19,18 +21,22 @@ PIE can store sensitive personal data in local SQLite databases, generated Markd
 ## ✨ Features
 
 - 📝 **Capture** — Add text entries via CLI
-- 🔍 **Extract** — Automatic classification using keyword-based extraction (LLM-ready architecture)
+- 🔍 **Extract** — Heuristic keyword classification and an optional local Ollama adapter
 - ✅ **Validate** — Pydantic schema validation with confidence scoring
 - 💾 **Persist** — SQLite as the single source of truth
 - 📄 **Project** — Markdown notes with YAML frontmatter
-- 📊 **Report** — Daily reports with entry summaries
+- 📊 **Report** — Daily, weekly, project, decisions, and candidate-task reports
+- ✅ **Human review** — Approval, rejection, and editing with revision history
+- 🛠️ **Recovery** — Resume failed captures and rebuild notes from the database
 - 🔒 **Audit** — Full pipeline traceability via audit logs
-- 🏠 **Local-first** — No cloud, no external APIs, no telemetry
+- 🏠 **Local-first** — No required cloud or telemetry; remote Ollama endpoints blocked by default
 - 🔎 **Search** — Local text search across all entries
 
 ## 🚀 Quick Start
 
 ### Installation
+
+Requires Python 3.10 or later. On Windows, installation includes `tzdata` for IANA timezones. Create the virtual environment on the current machine; recreate environments copied from another installation.
 
 ```bash
 # Clone the repository
@@ -50,6 +56,8 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+Before capturing entries, configure a fixed data directory as described under [Configuration](#configuration), or use the [isolated test checklist](docs/test_readiness.pt-BR.md). Verify the paths with `pie doctor`.
+
 ### Usage
 
 #### Add an entry
@@ -64,10 +72,24 @@ Output:
    Entry ID:      a1b2c3d4-...
    Structured ID: e5f6g7h8-...
    Type:          decision
-   Confidence:    85%
-   Validation:    valid
+   Confidence:    60%
+   Validation:    needs_review
    Note:          notes/e5f6g7h8-....md
 ```
+
+`FakeExtractor` confidence reflects deterministic rules, not the probability of a correct classification. Use `--project`, `--type`, and `--tag` for explicit fields, and review entries marked `needs_review`.
+
+#### Review entries
+
+```bash
+pie review list
+pie review show <structured_entry_id>
+pie review approve <structured_entry_id>
+pie review reject <structured_entry_id>
+pie review history <structured_entry_id>
+```
+
+Approval and rejection update the Markdown note as well as the database. Raw text remains unchanged.
 
 #### Generate a daily report
 
@@ -140,6 +162,8 @@ pie report tasks --project PIE
 
 Generates a Markdown list of `candidate_task` entries with status `valid` or `needs_review`. Excludes invalid and soft-deleted entries. Output file: `tasks_pending.md` or `tasks_pending_<project>.md`.
 
+Task completion is not tracked yet; the report uses validation status to select candidate tasks.
+
 Reports are saved in `reports/`, cite structured/raw source entry IDs, and are ignored by Git.
 
 #### Edit an entry under review
@@ -151,6 +175,8 @@ pie review edit <structured_entry_id> --entry-type decision
 ```
 
 Edits one or more structured fields (`summary`, `project`, `entry_type`) while preserving `raw_entries.content` unchanged. Records a before/after revision in `structured_entry_revisions` and writes an audit log entry. Regenerates the Markdown note after a successful edit.
+
+To clear the project, use `--project " "`; whitespace also works in shells that discard empty arguments.
 
 #### List entries
 
@@ -195,6 +221,30 @@ Backups are saved in `backups/` and exports in `exports/` (both directories are 
 
 SQLite backups and JSON exports are full database snapshots and may include soft-deleted entries. Markdown export is a human-readable active-entry summary and excludes soft-deleted entries.
 
+#### Delete and restore entries
+
+```bash
+pie entries delete <structured_entry_id>
+pie entries restore <structured_entry_id>
+pie entries purge --older-than 30
+```
+
+Deletion is reversible until purged. Purge permanently removes entries soft-deleted more than the specified number of days ago and asks for confirmation. Older backups, exports, and reports may retain copies.
+
+#### Recover failed captures and notes
+
+```bash
+pie entries failed
+pie entries retry <raw_entry_id>
+pie entries rebuild-note <structured_entry_id>
+```
+
+`failed` lists recoverable pending/error raw IDs without showing content. `retry` resumes extraction while preserving the original text and raw ID. `rebuild-note` reconstructs a note from SQLite without rerunning extraction.
+
+If editing, reviewing, or reprocessing commits the database change but fails to write the note, the CLI displays a warning and a rebuild command. Batch summaries count that entry as applied with a note needing recovery.
+
+SQL migrations are transactional, including version recording and foreign-key verification. `pie doctor` reports pending migrations without applying them; normal operations apply migrations during initialization.
+
 #### Reprocessing Stored Entries
 
 ```bash
@@ -212,9 +262,9 @@ pie entries reprocess --status needs_review
 ```
 
 > [!IMPORTANT]
-> Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database and regenerates the Markdown note for each reprocessed entry. The note regeneration occurs after the database commit; if the file write fails, the database remains correct but the note may be stale.
+> Always create a backup (e.g. `pie backup create`) before running reprocessing to protect your SQLite database. Reprocessing saves revisions to the database and regenerates the Markdown note for each reprocessed entry. The note regeneration occurs after the database commit; if the file write fails, the CLI reports the database change as applied, warns that the note is stale, and provides a `pie entries rebuild-note <id>` recovery command.
 >
-> Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch. If one entry fails, that entry is rolled back completely while earlier successful entries remain applied. The command output reports total selected, total applied, total failed, applied IDs, failed IDs, and a short error per failed ID. `raw_entries.content` is never edited by reprocessing.
+> Batch reprocessing is transactional per entry, not all-or-nothing for the whole batch. If an entry fails before the database commit, its changes are rolled back while earlier successful entries remain applied. A subsequent note write failure is reported separately and does not undo committed data. The command output reports total selected, total applied, total failed, applied IDs, failed IDs, and a short error per failed ID. `raw_entries.content` is never edited by reprocessing.
 
 ### Optional Local LLM Extraction
 
@@ -223,19 +273,21 @@ PIE uses the deterministic `FakeExtractor` by default. It does not require Ollam
 To keep the default behavior:
 
 ```bash
-PIE_EXTRACTOR_BACKEND=fake
+export PIE_EXTRACTOR_BACKEND=fake
 ```
 
 Experimental Ollama support is available as an optional local adapter:
 
 ```bash
-PIE_EXTRACTOR_BACKEND=ollama
-PIE_OLLAMA_BASE_URL=http://localhost:11434
-PIE_OLLAMA_MODEL=<your-local-model>
-PIE_LLM_TIMEOUT_SECONDS=30
-PIE_LLM_MAX_RETRIES=2
-PIE_LLM_RETRY_BACKOFF_SECONDS=1
+export PIE_EXTRACTOR_BACKEND=ollama
+export PIE_OLLAMA_BASE_URL=http://localhost:11434
+export PIE_OLLAMA_MODEL='your-installed-model'
+export PIE_LLM_TIMEOUT_SECONDS=30
+export PIE_LLM_MAX_RETRIES=2
+export PIE_LLM_RETRY_BACKOFF_SECONDS=1
 ```
+
+For PowerShell, use `$env:PIE_EXTRACTOR_BACKEND = 'ollama'`, `$env:PIE_OLLAMA_MODEL = 'your-installed-model'`, and the same `$env:NAME = 'value'` syntax for the other settings.
 
 Then run:
 
@@ -256,7 +308,10 @@ Run the synthetic extraction quality evaluation without creating database entrie
 ```bash
 pie evaluate extraction --backend fake
 pie evaluate extraction --backend fake --output reports/evaluation/fake.md
+pie evaluate extraction --backend fake --min-score 0.8
 ```
+
+`--min-score` exits with an error if the synthetic average falls below the threshold, keeping the report when `--output` is supplied. The current fake backend averages approximately 52.26%, with 0/9 cases meeting the 80% passing score, so the last command is expected to fail. The lexical score includes confidence expectations that differ from the heuristic calibration and does not measure semantic accuracy.
 
 See [docs/troubleshooting.md](docs/troubleshooting.md) for Ollama health checks, retry settings, and common error messages.
 
@@ -268,6 +323,13 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) for Ollama health checks,
 export PIE_HOME="$HOME/.pie"   # recommended before real use
 ```
 
+In PowerShell:
+
+```powershell
+$env:PIE_HOME = Join-Path $env:USERPROFILE '.pie'
+pie doctor
+```
+
 When `PIE_HOME` is set, all runtime paths (`pie.db`, `notes/`, `reports/`, `backups/`, `exports/`) are resolved under that directory. Without `PIE_HOME`, paths are resolved from the current working directory — running PIE from different directories creates separate databases.
 
 Individual paths can still be overridden via their own env vars (`PIE_DATABASE_PATH`, `PIE_NOTES_DIR`, etc.), and an absolute path always wins over the `PIE_HOME`-relative default.
@@ -276,36 +338,39 @@ Individual paths can still be overridden via their own env vars (`PIE_DATABASE_P
 
 ```bash
 python -m pytest -q
-# 379 tests
+python -m ruff check .
+python -m compileall -q personal_intelligence_engine
 ```
+
+Tests use temporary directories and disable local configuration loading. To validate the installed package too:
+
+```bash
+python -m pip wheel . --no-deps --wheel-dir dist
+python tests/smoke_installed_wheel.py dist/personal_intelligence_engine-0.1.0-py3-none-any.whl
+```
+
+The wheel includes SQL migrations, the versioned prompt, and synthetic evaluation fixtures. The smoke exercises capture, search, reports, backup, export, and evaluation outside the source checkout.
 
 ## 📁 Project Structure
 
 ```
-personal_intelligence_engine/
-├── app/
-│   ├── main.py              # Application orchestrator
-│   ├── config.py             # Configuration management
-│   ├── domain/
-│   │   ├── schemas.py        # Pydantic models
-│   │   └── types.py          # Enums and constants
-│   ├── services/             # Business logic layer
-│   ├── adapters/             # Swappable implementations
-│   │   ├── fake_extractor.py # Deterministic extractor
-│   │   └── markdown_writer.py
-│   ├── repositories/         # Data access layer
-│   │   └── database.py       # SQLite management
-│   └── cli/
-│       └── commands.py       # Click CLI commands
-├── migrations/
-│   └── 001_initial_schema.sql
-├── tests/
-├── docs/
-│   ├── architecture.md
-│   ├── privacy.md
-│   ├── data_model.md
-│   └── roadmap.md
-└── examples/
+personal-intelligence-engine/
+├── personal_intelligence_engine/
+│   └── app/
+│       ├── main.py           # Application orchestrator
+│       ├── config.py         # Configuration management
+│       ├── cli/              # Click CLI commands
+│       ├── domain/           # Pydantic schemas and enums
+│       ├── services/         # Business logic
+│       ├── repositories/     # SQLite persistence
+│       ├── adapters/         # Extractors and Markdown writer
+│       ├── migrations/       # Packaged SQL migrations
+│       ├── prompts/          # Versioned LLM prompt
+│       └── evaluation/       # Scoring, reports and synthetic fixtures
+├── tests/                    # Unit, integration and wheel smoke tests
+├── docs/                     # Architecture, privacy and test playbooks
+├── examples/                 # Synthetic examples
+└── pyproject.toml
 ```
 
 ## 🔑 Key Design Decisions
@@ -332,6 +397,7 @@ See [docs/roadmap.md](docs/roadmap.md) for the full development plan.
 
 - [Architecture](docs/architecture.md)
 - [Current State](docs/current_state.md)
+- [Controlled Test Checklist (Portuguese)](docs/test_readiness.pt-BR.md)
 - [7-Day Usage Playbook](docs/usage_playbook.md)
 - [Vision](docs/vision.md)
 - [Assistant Architecture](docs/assistant_architecture.md)

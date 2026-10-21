@@ -664,7 +664,7 @@ def test_reprocess_apply_regenerates_markdown_note(monkeypatch, work_dir):
         reports_dir=work_dir / "reports",
         backup_dir=work_dir / "backups",
         export_dir=work_dir / "exports",
-        migrations_dir=Path(__file__).resolve().parent.parent / "migrations",
+        migrations_dir=Path(__file__).resolve().parent.parent / "personal_intelligence_engine" / "app" / "migrations",
         extractor_backend="fake",
     )
     app = PIEApp(config)

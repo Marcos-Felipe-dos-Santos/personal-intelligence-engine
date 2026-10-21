@@ -11,7 +11,7 @@ from personal_intelligence_engine.app.domain.types import AuditAction, AuditStat
 from personal_intelligence_engine.app.main import PIEApp
 from personal_intelligence_engine.app.services.extraction_service import ExtractionService
 
-_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
+_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "personal_intelligence_engine" / "app" / "migrations"
 
 
 class AuditOllamaClient:

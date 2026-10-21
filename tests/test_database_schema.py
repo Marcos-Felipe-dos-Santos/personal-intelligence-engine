@@ -9,7 +9,7 @@ import pytest
 from personal_intelligence_engine.app.config import Config
 from personal_intelligence_engine.app.repositories.database import Database
 
-_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
+_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "personal_intelligence_engine" / "app" / "migrations"
 
 
 def test_schema_migrations_table_exists(app):
